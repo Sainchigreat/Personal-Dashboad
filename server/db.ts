@@ -201,12 +201,12 @@ function weekday(day: string): number {
  * Generates editable daily plans in the owner's timezone. Planned work is
  * never counted as completed activity. The planner is idempotent per day.
  */
-export function ensureDailyPlan(userId: string) {
+export function ensureDailyPlan(userId: string, referenceDate = new Date()) {
   const profile = db
     .prepare("SELECT timezone,auto_plan,daily_templates FROM settings WHERE user_id=?")
     .get(userId) as { timezone: string; auto_plan: number; daily_templates: string } | undefined;
   if (!profile) return;
-  const day = dateInZone(profile.timezone || "Africa/Lagos");
+  const day = dateInZone(profile.timezone || "Africa/Lagos", referenceDate);
   const cycle = db.prepare("SELECT id FROM cycles WHERE user_id=? AND month=?")
     .get(userId, day.slice(0, 7)) as { id: string } | undefined;
 
