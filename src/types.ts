@@ -7,7 +7,8 @@ export type Page =
   | "brand"
   | "pipeline"
   | "review"
-  | "settings";
+  | "settings"
+  | "team";
 export type FormName =
   | "task"
   | "sale"
