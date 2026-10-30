@@ -101,6 +101,35 @@ export function ensureDailyPlan(userId: string) {
     | { id: string; session_day: number }
     | undefined;
 
+  // Carry a small, bounded number of unfinished tasks into today's plan.
+  // The original is retained as history and linked from the new editable task.
+  if (profile.auto_plan) {
+    const overdue = db.prepare("SELECT * FROM tasks WHERE user_id=? AND due_date<? AND status IN ('todo','in_progress','deferred') ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, due_date ASC LIMIT 8")
+      .all(userId, day) as Array<Record<string, string | number | null>>;
+    if (overdue.length) {
+      const stamp = now();
+      db.exec("BEGIN IMMEDIATE");
+      try {
+        const insertCarry = db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,project_id,session_id,carried_from_id,title,description,category,priority,status,due_date,scheduled_time,estimated_minutes,actual_minutes,sort_order,notes,created_at,updated_at)
+          VALUES (?,?,?,?,?,?,?,? ,?,?,'todo',?,?,?,?,?,?,?,?)`);
+        for (const task of overdue) {
+          const carriedId = id();
+          insertCarry.run(
+            carriedId, userId, cycle?.id || task.cycle_id, task.project_id, task.session_id,
+            task.id, `Continue: ${String(task.title)}`,
+            String(task.description || ""), String(task.category || "Personal"),
+            String(task.priority || "medium"), day, String(task.scheduled_time || ""),
+            Number(task.estimated_minutes || 0), 0, Number(task.sort_order || 0),
+            String(task.notes || ""), stamp, stamp
+          );
+          db.prepare("UPDATE tasks SET status='carried',updated_at=? WHERE id=? AND user_id=?")
+            .run(stamp, task.id, userId);
+        }
+        db.exec("COMMIT");
+      } catch (error) { db.exec("ROLLBACK"); throw error; }
+    }
+  }
+
   // A session created later in the week still gets a seven-day guest reminder.
   // This check runs on every bootstrap and is idempotent, even after today's
   // regular task plan has already been generated.
