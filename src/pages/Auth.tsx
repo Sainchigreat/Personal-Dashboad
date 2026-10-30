@@ -94,8 +94,8 @@ export default function Auth({
             {registrationMode ? "Join the workspace" : "Welcome back"}
           </h2>
           <p>
-            {status.needsSetup
-              ? "Set up a private owner account to get started."
+            {registrationMode
+              ? "Create your account to join the invited Team Workspace."
               : "Sign in to continue where you left off."}
           </p>
           <form onSubmit={submit} className="auth-form">
@@ -127,7 +127,7 @@ export default function Auth({
                 type="password"
                 minLength={registrationMode ? 12 : undefined}
                 placeholder={
-                  status.needsSetup
+                  registrationMode
                     ? "At least 12 characters"
                     : "Enter your password"
                 }
@@ -145,8 +145,8 @@ export default function Auth({
             <button className="button primary wide" disabled={busy}>
               {busy
                 ? "Please wait…"
-                : status.needsSetup
-                  ? "Create workspace"
+                : registrationMode
+                  ? "Create account & join"
                   : "Sign in"}{" "}
               <ArrowRight size={16} />
             </button>
