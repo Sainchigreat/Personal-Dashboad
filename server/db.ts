@@ -190,6 +190,7 @@ export function ensureDailyPlan(userId: string) {
   if (dayOfWeek === 0) {
     add("Batch content and prepare the coming week's publishing schedule", "Personal Brand", "high", 90);
     add("Plan two creative projects and confirm weekly milestones", "Creative Studio", "high", 30);
+    add("Create next Friday's Next Chapter session plan and begin guest outreach", "Next Chapter", "high", 30);
     add("Review Next Chapter guest, topic and Friday session readiness", "Next Chapter", "high", 20);
   }
 
