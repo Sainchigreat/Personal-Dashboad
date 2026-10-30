@@ -244,3 +244,16 @@ export function ensureDailyPlan(userId: string) {
     throw error;
   }
 }
+
+export function createTeamOwnerWorkspace(userId: string) {
+  const stamp = now();
+  const workspaceId = id();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare("INSERT INTO team_workspaces(id,owner_user_id,name,created_at,updated_at) VALUES (?,?,?,?,?)")
+      .run(workspaceId,userId,"Team Workspace",stamp,stamp);
+    db.prepare("INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,'owner','active',?)")
+      .run(id(),workspaceId,userId,stamp);
+    db.exec("COMMIT");
+  } catch (error) { db.exec("ROLLBACK"); throw error; }
+}
