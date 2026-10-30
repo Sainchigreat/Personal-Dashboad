@@ -71,7 +71,7 @@ export function createWorkspace(userId: string, email: string, passwordHash: str
         "Content: publish course-related content on Tuesday, Wednesday and Friday; produce two substantial Next Chapter content pieces weekly.",
         "Client acquisition: complete and record 20 targeted outreach actions daily.",
         "Personal brand: document creative process, publish useful work and batch upcoming content during the weekend."
-      ].join("\\n"),
+      ].join("\n"),
       67, 1000000, 20, 2, 2, "2,3,5", 5, "active", stamp, stamp
     );
     db.exec("COMMIT");
