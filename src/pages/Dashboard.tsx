@@ -50,7 +50,7 @@ export default function Dashboard() {
     );
     return () => window.clearInterval(timer);
   }, [data.settings.timezone]);
-  const metrics = cycleMetrics(data, cycle, today);
+  const metrics = cycleMetrics(data, cycle, today);\n  const currentWeekStart = (() => { const date = new Date(`${today}T12:00:00.000Z`); date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); return date.toISOString().slice(0, 10); })();\n  const currentWeekEnd = (() => { const date = new Date(`${currentWeekStart}T12:00:00.000Z`); date.setUTCDate(date.getUTCDate() + 6); return date.toISOString().slice(0, 10); })();
   const dayPct = percentage(metrics.done, metrics.tasks.length);
   const firstName = data.settings.name.trim().split(/\s+/)[0] || "there";
   const priorities = [...metrics.tasks]
@@ -347,7 +347,7 @@ export default function Dashboard() {
           </div>
           <div className="goal-engine-item">
             <div className="row-between"><strong>Next Chapter editorial</strong><b>{cycle.chapter_content_target} pieces / week</b></div>
-            <div className="progress"><span style={{width: `${percentage(data.content_items.filter(item => item.cycle_id === cycle.id && ["Published","Distributed","Approved","Scheduled"].includes(item.status) && item.planned_date && item.planned_date >= today.slice(0, 8) + "01").length, cycle.chapter_content_target)}%`}} /></div>
+            <div className="progress"><span style={{width: `${percentage(data.content_items.filter(item => item.cycle_id === cycle.id && ["Published","Distributed","Approved","Scheduled"].includes(item.status) && item.planned_date && item.planned_date >= currentWeekStart && item.planned_date <= currentWeekEnd).length, cycle.chapter_content_target)}%`}} /></div>
             <small>Track the two weekly editorial pieces in your content library</small>
           </div>
           <div className="goal-engine-item">
