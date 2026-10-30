@@ -31,6 +31,7 @@ const pages: Page[] = [
   "pipeline",
   "review",
   "settings",
+  "team",
 ];
 const pageFromHash = (): Page => {
   const page = location.hash.replace(/^#\/?/, "") as Page;
