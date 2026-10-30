@@ -54,7 +54,7 @@ router.post("/invites",requireManager,(req,res,next)=>{
 });
 router.post("/goals",requireManager,(req,res,next)=>{
   try{
-    const input=z.object({title:z.string().trim().min(1).max(200),description:z.string().max(4000).default(""),target:z.number().positive().max(1e9),current:z.number().min(0).max(1e9).default(0),unit:z.string().max(40).default("deliverables"),due_date:z.string().date().nullable().default(null),owner_user_id:z.string().uuid().nullable().default(null)}).strict().parse(req.body);
+    const input=z.object({title:z.string().trim().min(1).max(200),description:z.string().max(4000).default(""),target:z.number().positive().max(1e9),current:z.number().min(0).max(1e9).default(0),unit:z.string().max(40).default("deliverables"),due_date:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).nullable().default(null),owner_user_id:z.string().uuid().nullable().default(null)}).strict().parse(req.body);
     const m=res.locals.teamMember as Member, uid=session(res).user_id, stamp=now(), gid=id();
     if(input.owner_user_id&&!db.prepare("SELECT 1 FROM team_members WHERE workspace_id=? AND user_id=? AND status='active'").get(m.workspace_id,input.owner_user_id)) return res.status(400).json({error:"Goal owner must be an active team member."});
     db.prepare("INSERT INTO team_goals(id,workspace_id,title,description,target,current,unit,due_date,owner_user_id,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").run(gid,m.workspace_id,input.title,input.description,input.target,input.current,input.unit,input.due_date,input.owner_user_id,uid,stamp,stamp);
@@ -64,7 +64,7 @@ router.post("/goals",requireManager,(req,res,next)=>{
 });
 router.patch("/goals/:id",requireManager,(req,res,next)=>{
   try{
-    const input=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().max(4000).optional(),target:z.number().positive().max(1e9).optional(),current:z.number().min(0).max(1e9).optional(),unit:z.string().max(40).optional(),due_date:z.string().date().nullable().optional(),owner_user_id:z.string().uuid().nullable().optional()}).strict().parse(req.body);
+    const input=z.object({title:z.string().trim().min(1).max(200).optional(),description:z.string().max(4000).optional(),target:z.number().positive().max(1e9).optional(),current:z.number().min(0).max(1e9).optional(),unit:z.string().max(40).optional(),due_date:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).nullable().optional(),owner_user_id:z.string().uuid().nullable().optional()}).strict().parse(req.body);
     const m=res.locals.teamMember as Member;
     if(!db.prepare("SELECT id FROM team_goals WHERE id=? AND workspace_id=?").get(req.params.id,m.workspace_id))return res.status(404).json({error:"Goal not found."});
     const keys=Object.keys(input);if(keys.length)db.prepare("UPDATE team_goals SET "+keys.map(k=>k+"=?").join(",")+",updated_at=? WHERE id=? AND workspace_id=?").run(...keys.map(k=>(input as Record<string,unknown>)[k]),now(),req.params.id,m.workspace_id);
@@ -74,7 +74,7 @@ router.patch("/goals/:id",requireManager,(req,res,next)=>{
 });
 router.post("/tasks",requireManager,(req,res,next)=>{
   try{
-    const input=z.object({title:z.string().trim().min(1).max(200),description:z.string().max(5000).default(""),assignee_user_id:z.string().uuid(),goal_id:z.string().uuid().nullable().default(null),priority:z.enum(["low","medium","high"]).default("medium"),due_date:z.string().date().nullable().default(null),deliverable:z.string().max(2000).default(""),reviewer_user_id:z.string().uuid().nullable().default(null)}).strict().parse(req.body);
+    const input=z.object({title:z.string().trim().min(1).max(200),description:z.string().max(5000).default(""),assignee_user_id:z.string().uuid(),goal_id:z.string().uuid().nullable().default(null),priority:z.enum(["low","medium","high"]).default("medium"),due_date:z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).nullable().default(null),deliverable:z.string().max(2000).default(""),reviewer_user_id:z.string().uuid().nullable().default(null)}).strict().parse(req.body);
     const m=res.locals.teamMember as Member,uid=session(res).user_id,stamp=now(),tid=id();
     for(const person of [input.assignee_user_id,input.reviewer_user_id].filter(Boolean)) if(!db.prepare("SELECT 1 FROM team_members WHERE workspace_id=? AND user_id=? AND status='active'").get(m.workspace_id,person))return res.status(400).json({error:"Assignee and reviewer must be active team members."});
     if(input.goal_id&&!db.prepare("SELECT 1 FROM team_goals WHERE id=? AND workspace_id=?").get(input.goal_id,m.workspace_id))return res.status(400).json({error:"Selected team goal is unavailable."});
