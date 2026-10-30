@@ -315,6 +315,63 @@ export default function Dashboard() {
         />
       </section>
 
+      <section className="panel goal-engine-panel">
+        <div className="section-heading">
+          <div>
+            <span className="overline">MONTHLY GOAL ENGINE</span>
+            <h2>What this month requires from you</h2>
+            <p className="muted">Your operating cycle translated into measurable weekly and daily commitments.</p>
+          </div>
+          <button onClick={() => openForm("cycle", asRecord(cycle))}>Edit monthly goals <ArrowUpRight size={14} /></button>
+        </div>
+        <div className="goal-engine-grid">
+          <div className="goal-engine-item">
+            <strong>Graphic Design with AI</strong>
+            <b>{metrics.sales} / {cycle.sales_target} sales</b>
+            <Progress value={percentage(metrics.sales, cycle.sales_target)} />
+            <small>{Math.max(0, cycle.sales_target - metrics.sales)} sales remaining · {Math.ceil(cycle.sales_target / 4.35)} per week at a four-week pace</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Revenue target</strong>
+            <b>{currency(metrics.revenue)} / {currency(cycle.revenue_target)}</b>
+            <Progress value={percentage(metrics.revenue, cycle.revenue_target)} />
+            <small>{currency(Math.max(0, cycle.revenue_target - metrics.revenue))} remaining</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Client acquisition</strong>
+            <b>{metrics.outreach} / {cycle.outreach_target} actions today</b>
+            <Progress value={percentage(metrics.outreach, cycle.outreach_target)} />
+            <small>20 targeted outreach actions every day, recorded as they happen</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Creative production</strong>
+            <b>{metrics.projectsDone} / {cycle.projects_target} projects this week</b>
+            <Progress value={percentage(metrics.projectsDone, cycle.projects_target)} />
+            <small>Project 1 Monday–Wednesday · Project 2 Thursday–Friday</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Next Chapter content</strong>
+            <b>{cycle.chapter_content_target} substantial pieces weekly</b>
+            <small>Two editorial production blocks each week, plus the Friday live session</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Weekly visibility</strong>
+            <b>Tuesday · Wednesday · Friday</b>
+            <small>Course content publishing, WhatsApp promotion and weekly audience-building</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Next Chapter guest pipeline</strong>
+            <b>Confirm at least 7 days ahead</b>
+            <small>Guest outreach and session planning on Sunday; confirmation reminder one week before the scheduled session</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Job and client pipeline</strong>
+            <b>Three daily review windows</b>
+            <small>5 AM · 6 AM LinkedIn · 8 AM, with fresh listings and trigger-based outreach batches</small>
+          </div>
+        </div>
+      </section>
+
       <div className="dashboard-columns">
         <section className="panel priority-panel">
           <SectionHeading
