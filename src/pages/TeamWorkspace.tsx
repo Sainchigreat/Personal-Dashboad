@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { Button, Card, Modal } from "../components/UI";
+import { Button } from "../components/UI";
 
 type Goal={id:string;title:string;description:string;target:number;current:number;unit:string;due_date:string|null;owner_user_id:string|null};
 type Task={id:string;title:string;description:string;assignee_user_id:string;assignee_email:string;goal_id:string|null;goal_title:string|null;priority:string;status:string;due_date:string|null;deliverable:string;feedback:string};
 type Member={user_id:string;role:string;status:string;email:string;name:string};
 type Feed={id:string;action:string;summary:string;created_at:string;name:string|null;email:string};
-type State={workspace:{name:string};membership:{role:string};goals:Goal[];tasks:Task[];members:Member[];activity:Feed[];comments:Array<{id:string;task_id:string;user_id:string;body:string;created_at:string}>};
+type State={workspace:{name:string};membership:{role:string;user_id:string};goals:Goal[];tasks:Task[];members:Member[];activity:Feed[];comments:Array<{id:string;task_id:string;user_id:string;body:string;created_at:string}>};
 const label=(s:string)=>s.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 export default function TeamWorkspace(){
  const [data,setData]=useState<State|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[dialog,setDialog]=useState<"task"|"goal"|"invite"|null>(null),[selected,setSelected]=useState<Task|null>(null),[notice,setNotice]=useState("");
@@ -23,7 +23,7 @@ export default function TeamWorkspace(){
   <div className="page-heading"><div><div className="eyebrow">SHARED OPERATIONS</div><h1>Team Workspace</h1><p className="muted">Shared goals, assigned work and transparent progress.</p></div><div className="page-actions">{manager&&<Button variant="secondary" onClick={()=>setDialog("invite")}>Invite member</Button>}{manager&&<Button onClick={()=>setDialog("task")}>＋ Assign task</Button>}</div></div>
   {error&&<div className="form-error" role="alert">{error}</div>}{notice&&<p className="muted" role="status">{notice}</p>}
   <div className="grid stats-grid">
-   <Card><span className="muted">Active goals</span><h2>{data.goals.length}</h2></Card>
+   <div className="card"><span className="muted">Active goals</span><h2>{data.goals.length}</h2></div>
    <Card><span className="muted">In progress</span><h2>{count("in_progress")}</h2></Card>
    <Card><span className="muted">Awaiting review</span><h2>{count("submitted")}</h2></Card>
    <Card><span className="muted">Completed / approved</span><h2>{count("approved")+count("completed")}</h2></Card>
