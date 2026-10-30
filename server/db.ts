@@ -40,6 +40,9 @@ const defaultTemplates = [
   { title: "Publish today's course promotion on WhatsApp Status", category: "Course Growth", priority: "high", estimated_minutes: 20 },
   { title: "Respond to course enquiries and follow up warm leads", category: "Course Growth", priority: "high", estimated_minutes: 30 },
   { title: "Complete today's 20 targeted outreach actions and log them", category: "Client Pipeline", priority: "high", estimated_minutes: 75 },
+  { title: "Review the 5 AM outreach batch: 10 listings and 10 trigger-based targets", category: "Client Pipeline", priority: "high", estimated_minutes: 30, scheduled_time: "05:00" },
+  { title: "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners", category: "Client Pipeline", priority: "high", estimated_minutes: 30, scheduled_time: "06:00" },
+  { title: "Review the 8 AM outreach batch: 10 fresh listings and 10 trigger-based targets", category: "Client Pipeline", priority: "high", estimated_minutes: 30, scheduled_time: "08:00" },
   { title: "Capture one useful idea or lesson for your personal brand", category: "Personal Brand", priority: "medium", estimated_minutes: 15 },
   { title: "Record today's wins, blockers and tomorrow's first action", category: "Personal", priority: "low", estimated_minutes: 10 },
 ];
@@ -152,7 +155,7 @@ export function ensureDailyPlan(userId: string) {
   }
 
   if (!profile.auto_plan) return;
-  let templates: Array<{title?:string;category?:string;priority?:string;estimated_minutes?:number}>;
+  let templates: Array<{title?:string;category?:string;priority?:string;estimated_minutes?:number;scheduled_time?:string}>;
   try { templates = JSON.parse(profile.daily_templates); } catch { return; }
   if (!Array.isArray(templates)) return;
   const already = db.prepare("SELECT day FROM generated_days WHERE user_id=? AND day=?").get(userId, day);
@@ -182,6 +185,8 @@ export function ensureDailyPlan(userId: string) {
     add("Prepare and deliver the weekly Next Chapter live session", "Next Chapter", "high", 90);
     add("Review next week's guest and session plan", "Next Chapter", "high", 20);
   }
+  if (dayOfWeek === 6)
+    add("Batch creative assets and prepare next week's content drafts", "Personal Brand", "high", 90);
   if (dayOfWeek === 0) {
     add("Batch content and prepare the coming week's publishing schedule", "Personal Brand", "high", 90);
     add("Plan two creative projects and confirm weekly milestones", "Creative Studio", "high", 30);
@@ -192,12 +197,12 @@ export function ensureDailyPlan(userId: string) {
   try {
     const result = db.prepare("INSERT OR IGNORE INTO generated_days(user_id,day) VALUES (?,?)").run(userId, day);
     if (Number(result.changes)) {
-      const insert = db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,title,category,priority,status,due_date,estimated_minutes,sort_order,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,'todo',?,?,?,?,?)`);
+      const insert = db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,title,category,priority,status,due_date,scheduled_time,estimated_minutes,sort_order,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,'todo',?,?,?,?,?,?)`);
       planned.slice(0, 30).forEach((template,index) => {
         if (typeof template.title !== "string" || !template.title.trim()) return;
         const priority = ["high","medium","low"].includes(template.priority || "") ? template.priority! : "medium";
-        insert.run(id(),userId,cycle?.id || null,template.title.trim().slice(0,200),String(template.category || "Personal").slice(0,80),priority,day,Math.max(0,Math.min(1440,Number(template.estimated_minutes)||0)),index,stamp,stamp);
+        insert.run(id(),userId,cycle?.id || null,template.title.trim().slice(0,200),String(template.category || "Personal").slice(0,80),priority,day,String(template.scheduled_time || ""),Math.max(0,Math.min(1440,Number(template.estimated_minutes)||0)),index,stamp,stamp);
       });
     }
     db.exec("COMMIT");
