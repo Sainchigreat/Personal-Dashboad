@@ -19,6 +19,7 @@ import {
   ensureDailyPlan,
   dateInZone,
 } from "./db";
+import teamRouter from "./team";
 import {
   configs,
   foreignKeys,
