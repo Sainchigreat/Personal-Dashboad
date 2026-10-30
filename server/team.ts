@@ -4,13 +4,13 @@ import { z } from "zod";
 import { db, id, now } from "./db";
 
 type Session = { user_id: string; email: string };
-type Member = { workspace_id: string; role: "owner" | "manager" | "member"; status: string };
+type Member = { user_id: string; workspace_id: string; role: "owner" | "manager" | "member"; status: string };
 const router = Router();
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const token = () => randomBytes(32).toString("base64url");
 function session(res: Response): Session { return res.locals.session as Session; }
 function membership(userId: string): Member | undefined {
-  return db.prepare("SELECT workspace_id,role,status FROM team_members WHERE user_id=?").get(userId) as Member | undefined;
+  return db.prepare("SELECT user_id,workspace_id,role,status FROM team_members WHERE user_id=?").get(userId) as Member | undefined;
 }
 function requireMember(_req: Request,res: Response,next: NextFunction) {
   const member = membership(session(res).user_id);
