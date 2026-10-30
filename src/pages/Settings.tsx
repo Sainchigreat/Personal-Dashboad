@@ -439,7 +439,7 @@ export default function Settings() {
                       </span>
                     </button>
                     <Pill
-                      tone={item.status === "active" ? "green" : "neutral"}
+                      tone={item.status === "active" ? "gold" : "neutral"}
                       dot
                     >
                       {item.status === "active" ? "Active" : "Archived"}
@@ -562,7 +562,7 @@ export default function Settings() {
                         {currency(product.price)}
                       </small>
                     </span>
-                    <Pill tone={product.active ? "green" : "neutral"}>
+                    <Pill tone={product.active ? "gold" : "neutral"}>
                       {product.active ? "Available" : "Archived"}
                     </Pill>
                     <ArrowRight size={15} />
@@ -608,7 +608,7 @@ export default function Settings() {
           </div>
           <aside className="module-aside">
             <section className="panel side-panel">
-              <div className="side-panel-icon green">
+              <div className="side-panel-icon gold">
                 <ShieldCheck size={18} />
               </div>
               <span className="overline">YOUR WORK BELONGS TO YOU</span>

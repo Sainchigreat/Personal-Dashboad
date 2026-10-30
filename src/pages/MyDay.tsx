@@ -178,7 +178,7 @@ export default function MyDay() {
         <strong>{task.title}</strong>
         <span>
           <span
-            className={`category-dot ${task.category === "Course Growth" ? "green" : task.category === "Creative Studio" ? "highlight" : task.category === "Client Pipeline" ? "secondary" : "accent"}`}
+            className={`category-dot ${task.category === "Course Growth" ? "gold" : task.category === "Creative Studio" ? "highlight" : task.category === "Client Pipeline" ? "secondary" : "accent"}`}
           />
           {task.category}
           {task.scheduled_time && (

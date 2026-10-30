@@ -33,12 +33,9 @@ import {
 } from "../components/UI";
 import type { Page, Task } from "../types";
 
-function taskTone(category: string) {
-  if (category === "Course Growth") return "lavender";
-  if (category === "Client Pipeline") return "peach";
-  if (category === "Creative Studio") return "mint";
-  if (category === "Next Chapter") return "yellow";
-  return "neutral";
+// Colours alternate for visual interest only; task priority and status are text.
+function taskTone(index: number) {
+  return ["blue", "violet", "yellow", "coral"][index % 4];
 }
 
 export default function Dashboard() {
@@ -55,6 +52,12 @@ export default function Dashboard() {
   }, [data.settings.timezone]);
   const metrics = cycleMetrics(data, cycle, today);
   const firstName = data.settings.name.trim().split(/\s+/)[0] || "there";
+  const courseDays = cycle.course_days
+    .split(",")
+    .filter(Boolean)
+    .map((day) => weekdayNames[Number(day)])
+    .filter(Boolean)
+    .join(" · ");
   const priorities = [...metrics.tasks]
     .sort((a, b) => {
       const rank = { high: 0, medium: 1, low: 2 };
@@ -213,7 +216,7 @@ export default function Dashboard() {
         />
         <MetricCard
           icon={TrendingUp}
-          iconTone="green"
+          iconTone="gold"
           label="Revenue"
           value={currency(metrics.revenue)}
           detail={`of ${currency(cycle.revenue_target)} target`}
@@ -250,63 +253,6 @@ export default function Dashboard() {
         />
       </section>
 
-      <section className="panel goal-engine-panel">
-        <div className="section-heading">
-          <div>
-            <span className="overline">MONTHLY GOAL ENGINE</span>
-            <h2>What this month requires from you</h2>
-            <p>Your operating cycle translated into measurable weekly and daily commitments.</p>
-          </div>
-          <button onClick={() => openForm("cycle", asRecord(cycle))}>Edit monthly goals <ArrowUpRight size={14} /></button>
-        </div>
-        <div className="goal-engine-grid">
-          <div className="goal-engine-item">
-            <strong>Graphic Design with AI</strong>
-            <b>{metrics.sales} / {cycle.sales_target} sales</b>
-            <div className="goal-engine-track"><span style={{width: percentage(metrics.sales, cycle.sales_target) + "%"}} /></div>
-            <small>{Math.max(0, cycle.sales_target - metrics.sales)} sales remaining · {Math.ceil(cycle.sales_target / 4.35)} per week at a four-week pace</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Revenue target</strong>
-            <b>{currency(metrics.revenue)} / {currency(cycle.revenue_target)}</b>
-            <div className="goal-engine-track"><span style={{width: percentage(metrics.revenue, cycle.revenue_target) + "%"}} /></div>
-            <small>{currency(Math.max(0, cycle.revenue_target - metrics.revenue))} remaining</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Client acquisition</strong>
-            <b>{metrics.outreach} / {cycle.outreach_target} actions today</b>
-            <div className="goal-engine-track"><span style={{width: percentage(metrics.outreach, cycle.outreach_target) + "%"}} /></div>
-            <small>20 targeted outreach actions every day, recorded as they happen</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Creative production</strong>
-            <b>{metrics.projectsDone} / {cycle.projects_target} projects this week</b>
-            <div className="goal-engine-track"><span style={{width: percentage(metrics.projectsDone, cycle.projects_target) + "%"}} /></div>
-            <small>Project 1 Monday–Wednesday · Project 2 Thursday–Friday</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Next Chapter content</strong>
-            <b>{cycle.chapter_content_target} substantial pieces weekly</b>
-            <small>Two editorial production blocks each week, plus the Friday live session</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Weekly visibility</strong>
-            <b>Tuesday · Wednesday · Friday</b>
-            <small>Course content publishing, WhatsApp promotion and weekly audience-building</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Next Chapter guest pipeline</strong>
-            <b>Confirm at least 7 days ahead</b>
-            <small>Guest outreach and session planning on Sunday; confirmation reminder one week before the scheduled session</small>
-          </div>
-          <div className="goal-engine-item">
-            <strong>Job and client pipeline</strong>
-            <b>Three daily review windows</b>
-            <small>5 AM · 6 AM LinkedIn · 8 AM, with fresh listings and trigger-based outreach batches</small>
-          </div>
-        </div>
-      </section>
-
       <div className="dashboard-board">
         <section className="panel dashboard-tasks">
           <SectionHeading
@@ -320,9 +266,9 @@ export default function Dashboard() {
           />
           <div className="dashboard-task-list">
             {priorities.length ? (
-              priorities.map((task) => (
+              priorities.map((task, index) => (
                 <div
-                  className={`dashboard-task task-${taskTone(task.category)}`}
+                  className={`dashboard-task task-${taskTone(index)}`}
                   key={task.id}
                 >
                   <Checkbox
@@ -544,6 +490,122 @@ export default function Dashboard() {
           </section>
         </div>
       </div>
+
+      <section className="panel goal-engine-panel">
+        <div className="section-heading">
+          <div>
+            <span className="overline">MONTHLY GOAL ENGINE</span>
+            <h2>What this month requires from you</h2>
+            <p>
+              Your operating cycle translated into measurable weekly and daily
+              commitments.
+            </p>
+          </div>
+          <button onClick={() => openForm("cycle", asRecord(cycle))}>
+            Edit monthly goals <ArrowUpRight size={14} />
+          </button>
+        </div>
+        <div className="goal-engine-grid">
+          <div className="goal-engine-item">
+            <strong>Course sales</strong>
+            <b>
+              {metrics.sales} / {cycle.sales_target} sales
+            </b>
+            <div className="goal-engine-track">
+              <span
+                style={{
+                  width: percentage(metrics.sales, cycle.sales_target) + "%",
+                }}
+              />
+            </div>
+            <small>
+              {Math.max(0, cycle.sales_target - metrics.sales)} sales remaining
+              · {Math.ceil(cycle.sales_target / 4.35)} per week on average
+            </small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Revenue target</strong>
+            <b>
+              {currency(metrics.revenue)} / {currency(cycle.revenue_target)}
+            </b>
+            <div className="goal-engine-track">
+              <span
+                style={{
+                  width:
+                    percentage(metrics.revenue, cycle.revenue_target) + "%",
+                }}
+              />
+            </div>
+            <small>
+              {currency(Math.max(0, cycle.revenue_target - metrics.revenue))}{" "}
+              remaining
+            </small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Client acquisition</strong>
+            <b>
+              {metrics.outreach} / {cycle.outreach_target} actions today
+            </b>
+            <div className="goal-engine-track">
+              <span
+                style={{
+                  width:
+                    percentage(metrics.outreach, cycle.outreach_target) + "%",
+                }}
+              />
+            </div>
+            <small>
+              {cycle.outreach_target} targeted outreach actions daily, recorded
+              as they happen
+            </small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Creative production</strong>
+            <b>
+              {metrics.projectsDone} / {cycle.projects_target} projects this
+              week
+            </b>
+            <div className="goal-engine-track">
+              <span
+                style={{
+                  width:
+                    percentage(metrics.projectsDone, cycle.projects_target) +
+                    "%",
+                }}
+              />
+            </div>
+            <small>Weekly production target for this cycle</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Next Chapter content</strong>
+            <b>{cycle.chapter_content_target} substantial pieces weekly</b>
+            <small>
+              Editorial target and {weekdayNames[cycle.session_day]} session
+              rhythm for this cycle
+            </small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Weekly visibility</strong>
+            <b>{courseDays || "No publishing days selected"}</b>
+            <small>Course content days for this cycle</small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Next Chapter guest pipeline</strong>
+            <b>Confirm at least 7 days ahead</b>
+            <small>
+              Guest outreach and session planning on Sunday; confirmation
+              reminder one week before the scheduled session
+            </small>
+          </div>
+          <div className="goal-engine-item">
+            <strong>Job and client pipeline</strong>
+            <b>Review your opportunities</b>
+            <small>
+              Track saved leads and job listings; outreach is always manual
+            </small>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

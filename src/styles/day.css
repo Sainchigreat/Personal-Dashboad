@@ -21,7 +21,7 @@
   height: 37px;
   border-radius: 8px;
   color: var(--accent);
-  background: #9efcd51c;
+  background: #789fff1c;
 }
 .day-date strong,
 .day-date span:not(.day-date-icon) {
@@ -51,8 +51,8 @@
 }
 .day-nav > button.current {
   color: var(--accent);
-  background: #94f7ce19;
-  border-color: #a1ffd82b;
+  background: #789fff19;
+  border-color: #789fff2b;
 }
 .day-layout {
   display: grid;
@@ -78,7 +78,7 @@
   justify-content: space-between;
   gap: 15px;
   padding: 21px;
-  background: var(--mint-soft);
+  background: var(--blue-soft);
   border-color: var(--border-light);
 }
 .day-progress-card h2 {
@@ -167,8 +167,8 @@
   margin-right: 5px;
   vertical-align: 1px;
 }
-.category-dot.green {
-  background: var(--accent);
+.category-dot.gold {
+  background: var(--gold-strong);
 }
 .category-dot.highlight {
   background: var(--peach);
@@ -289,7 +289,7 @@
   height: 36px;
   border-radius: 9px;
   color: var(--accent);
-  background: #98ffd41c;
+  background: #789fff1c;
   margin-bottom: 17px;
 }
 .time-card h2,

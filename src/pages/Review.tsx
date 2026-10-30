@@ -96,13 +96,13 @@ export default function Review() {
       label: "Paid sales",
       value: metrics.sales,
       icon: CircleDollarSign,
-      tone: "green",
+      tone: "gold",
     },
     {
       label: "Revenue",
       value: currency(metrics.revenue),
       icon: BarChart3,
-      tone: "green",
+      tone: "gold",
     },
     {
       label: "Prospects researched",

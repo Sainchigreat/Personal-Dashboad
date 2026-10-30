@@ -95,7 +95,7 @@ export default function Pipeline() {
         />
         <MetricCard
           icon={UsersRound}
-          iconTone="green"
+          iconTone="gold"
           label="Prospects"
           value={data.prospects.length}
           detail="In your relationship database"

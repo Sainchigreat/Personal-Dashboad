@@ -16,8 +16,8 @@
   place-items: center;
   flex: none;
   color: var(--accent);
-  background: #91e8c420;
-  border: 1px solid #91e8c42a;
+  background: #789fff20;
+  border: 1px solid #789fff2a;
   border-radius: 10px;
 }
 .studio-summary > div:nth-child(2) {
@@ -93,7 +93,7 @@
   background: var(--lavender-soft);
 }
 .project-card-art.art-1 {
-  background: var(--mint-soft);
+  background: var(--blue-soft);
 }
 .project-card-art.art-2 {
   background: var(--peach-soft);

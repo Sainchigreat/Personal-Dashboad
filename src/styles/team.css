@@ -11,7 +11,7 @@
   border: 1px solid var(--border);
   border-radius: 9px;
   color: var(--muted);
-  background: var(--mint-soft);
+  background: var(--blue-soft);
   font-size: 11px;
 }
 .team-privacy svg {

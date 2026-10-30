@@ -155,7 +155,7 @@ export default function Chapter() {
           </span>
         </div>
         <div>
-          <span className="chapter-stat-icon green">
+          <span className="chapter-stat-icon gold">
             <FileText size={17} />
           </span>
           <span>

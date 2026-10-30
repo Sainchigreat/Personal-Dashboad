@@ -79,15 +79,15 @@
   display: grid;
   place-items: center;
   color: var(--accent);
-  background: #9bffd51b;
+  background: #789fff1b;
 }
 .chapter-stat-icon.secondary {
   color: var(--lavender);
   background: var(--lavender-soft);
 }
-.chapter-stat-icon.green {
-  color: var(--accent);
-  background: #82cbad1b;
+.chapter-stat-icon.gold {
+  color: var(--gold);
+  background: var(--yellow-soft);
 }
 .chapter-stats small,
 .chapter-stats strong {
@@ -144,7 +144,7 @@
   background: transparent;
 }
 .session-tabs > button.selected {
-  background: #95f6ce0d;
+  background: #789fff0d;
 }
 .session-tabs > button > span:nth-child(2) {
   min-width: 0;
@@ -171,7 +171,7 @@
   display: grid;
   place-items: center;
   border-radius: 7px;
-  background: #9adfc218;
+  background: #789fff18;
   color: var(--accent);
 }
 .session-tab-date strong {
@@ -284,7 +284,7 @@
   border: 1px solid var(--border-light);
   border-radius: 7px;
   color: var(--muted);
-  background: #86cbae10;
+  background: #789fff10;
   font-size: 10px;
   line-height: 1.6;
 }

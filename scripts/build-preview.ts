@@ -92,10 +92,10 @@ css = css.replace(
 if (/url\((['"]?)\/assets\//.test(css))
   throw new Error("An asset URL was not embedded into the standalone preview.");
 const bannerStyles = `
-#demo-notice{position:fixed;z-index:10000;left:50%;bottom:12px;transform:translateX(-50%);max-width:calc(100vw - 24px);display:flex;gap:8px;align-items:center;padding:8px 12px;background:#193d29;color:#fff;border:1px solid #39855b;border-radius:8px;box-shadow:0 5px 22px #0008;font:500 12px/1.4 Inter,system-ui,sans-serif}
+#demo-notice{position:fixed;z-index:10000;left:50%;bottom:12px;transform:translateX(-50%);max-width:calc(100vw - 24px);display:flex;gap:8px;align-items:center;padding:8px 12px;background:#20346e;color:#fff;border:1px solid #4d6ac4;border-radius:8px;box-shadow:0 5px 22px #0008;font:500 12px/1.4 Inter,system-ui,sans-serif}
 #demo-notice strong{white-space:nowrap}#demo-notice button{border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer;line-height:1}
-#visual-fallback{position:fixed;inset:0;z-index:9999;overflow:auto;background:#f6f7f4;color:#202822;font:500 13px/1.45 Inter,system-ui,sans-serif}
-#visual-fallback .fallback-message{position:sticky;top:0;z-index:1;padding:11px 16px;text-align:center;background:#193d29;color:#fff;border-bottom:1px solid #39855b}
+#visual-fallback{position:fixed;inset:0;z-index:9999;overflow:auto;background:#f6f7fb;color:#20232e;font:500 13px/1.45 Inter,system-ui,sans-serif}
+#visual-fallback .fallback-message{position:sticky;top:0;z-index:1;padding:11px 16px;text-align:center;background:#20346e;color:#fff;border-bottom:1px solid #4d6ac4}
 #visual-fallback a{color:#fff;text-decoration:underline;font-weight:700}#visual-fallback img{display:block;width:100%;height:auto}
 @media(max-width:600px){#demo-notice{width:calc(100% - 24px);font-size:11px;justify-content:center}}
 `;

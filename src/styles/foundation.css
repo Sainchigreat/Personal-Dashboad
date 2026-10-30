@@ -7,73 +7,75 @@
     "Segoe UI",
     sans-serif;
   color-scheme: light;
-  --bg: #f6f7f4;
+  --bg: #f6f7fb;
   --sidebar: #ffffff;
   --topbar: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f8f9f6;
-  --surface-3: #eef1eb;
-  --input: #fafbf9;
-  --border: #e7ebe5;
-  --border-light: #d9dfd7;
-  --text: #202822;
-  --muted: #58645b;
-  --subtle: #687269;
-  --accent: #176b49;
-  --accent-strong: #1d6949;
-  --accent-hover: #125638;
-  --accent-soft: #e3f2e8;
-  --progress-ring: #e6ebe4;
-  --hover: #f3f6f1;
-  --green: #176b49;
-  --lavender: #674b9f;
-  --lavender-soft: #f0ebfa;
-  --peach: #a3512e;
-  --peach-soft: #fcece3;
-  --yellow: #80600f;
-  --yellow-soft: #fbf3db;
-  --mint-soft: #e4f4ea;
-  --chart-active: #8465c4;
-  --chart-completed: #55ad7d;
+  --surface-2: #f8f9fc;
+  --surface-3: #edf0f7;
+  --input: #fafbfe;
+  --border: #e5e8ef;
+  --border-light: #d7dce7;
+  --text: #20232e;
+  --muted: #596171;
+  --subtle: #697284;
+  --accent: #2852bd;
+  --accent-strong: #2859dc;
+  --accent-hover: #1b46ba;
+  --accent-soft: #e9efff;
+  --progress-ring: #e8ebf3;
+  --hover: #f0f3fa;
+  --gold: #805a06;
+  --lavender: #6542a1;
+  --lavender-soft: #f1eaff;
+  --peach: #ad4050;
+  --peach-soft: #ffe9ea;
+  --yellow: #805a06;
+  --yellow-soft: #fff2c6;
+  --blue-soft: #edf2ff;
+  --chart-active: #336bed;
+  --chart-completed: #d99a16;
+  --gold-strong: #d99a16;
   --danger: #a6363f;
   --danger-soft: #fff0f0;
-  --shadow: 0 20px 50px #2434271c;
+  --shadow: 0 20px 50px #2532521c;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
 /* Explicit dark and device preferences remain available in Settings. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111411;
-  --sidebar: #171a17;
-  --topbar: #171a17;
-  --surface: #1e221e;
-  --surface-2: #252a25;
-  --surface-3: #303730;
-  --input: #1a1f1a;
-  --border: #343b34;
-  --border-light: #4a554a;
-  --text: #f1f4ef;
-  --muted: #b9c2b8;
-  --subtle: #a6b1a5;
-  --accent: #8bd1a7;
-  --accent-strong: #24764e;
-  --accent-hover: #1d6743;
-  --accent-soft: #253b2d;
-  --progress-ring: #3c443b;
-  --hover: #303a30;
-  --green: #8bd1a7;
-  --lavender: #d1c0fa;
-  --lavender-soft: #352d42;
-  --peach: #f2b99c;
-  --peach-soft: #3f302a;
-  --yellow: #e5cd8c;
-  --yellow-soft: #3c3624;
-  --mint-soft: #263b2d;
-  --chart-active: #b89be8;
-  --chart-completed: #72c69a;
-  --danger: #f0aab0;
-  --danger-soft: #3a2528;
+  --bg: #10131b;
+  --sidebar: #161923;
+  --topbar: #161923;
+  --surface: #1d202c;
+  --surface-2: #252937;
+  --surface-3: #303647;
+  --input: #1a1d28;
+  --border: #363c4b;
+  --border-light: #4c566b;
+  --text: #f3f4fa;
+  --muted: #c0c6d4;
+  --subtle: #aab4c7;
+  --accent: #b3c6ff;
+  --accent-strong: #315ed5;
+  --accent-hover: #264db8;
+  --accent-soft: #273550;
+  --progress-ring: #3c4354;
+  --hover: #30394b;
+  --gold: #f6d779;
+  --lavender: #d8c4ff;
+  --lavender-soft: #372f48;
+  --peach: #ffbdc4;
+  --peach-soft: #443036;
+  --yellow: #f6d779;
+  --yellow-soft: #3d3523;
+  --blue-soft: #27344d;
+  --chart-active: #86aaff;
+  --chart-completed: #f2c248;
+  --gold-strong: #f2c248;
+  --danger: #f5aeb6;
+  --danger-soft: #3e252b;
   --shadow: 0 20px 50px #00000066;
 }
 * {
@@ -155,7 +157,7 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px #8affce1b;
+  box-shadow: 0 0 0 3px #789fff1b;
 }
 textarea {
   resize: vertical;
@@ -215,7 +217,7 @@ label {
   place-items: center;
   color: #ffffff;
   background: var(--accent-strong);
-  box-shadow: 0 5px 18px #8affce25;
+  box-shadow: 0 5px 18px #789fff25;
 }
 .logo-name {
   font:
@@ -386,7 +388,7 @@ label {
   flex: none;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 3px #8fc9b119;
+  box-shadow: 0 0 0 3px #789fff19;
 }
 .preview-label {
   color: var(--accent);
@@ -632,11 +634,11 @@ label {
   display: grid;
   place-items: center;
   color: var(--accent);
-  background: #8af4c81c;
+  background: #789fff1c;
 }
-.quick-icon.green {
-  color: var(--green);
-  background: #7ac5a61a;
+.quick-icon.gold {
+  color: var(--gold);
+  background: var(--yellow-soft);
 }
 .quick-icon.secondary {
   color: var(--lavender);
@@ -817,8 +819,8 @@ label {
   align-items: center;
   gap: 5px;
   color: var(--muted);
-  background: #8ec0ab14;
-  border: 1px solid #8ec0ab1b;
+  background: #789fff14;
+  border: 1px solid #789fff1b;
   border-radius: 5px;
   font-size: 9px;
   line-height: 1;
@@ -828,13 +830,13 @@ label {
 }
 .pill.accent {
   color: var(--accent);
-  background: #93f7cd1a;
-  border-color: #a0fcd628;
+  background: #789fff1a;
+  border-color: #789fff28;
 }
-.pill.green {
-  color: var(--accent);
-  background: #7ec7a81a;
-  border-color: #7ec7a828;
+.pill.gold {
+  color: var(--gold);
+  background: var(--yellow-soft);
+  border-color: transparent;
 }
 .pill.secondary {
   color: var(--lavender);
@@ -872,8 +874,8 @@ label {
   background: var(--accent);
   transition: width 0.25s ease;
 }
-.progress-fill.green {
-  background: var(--accent);
+.progress-fill.gold {
+  background: var(--gold-strong);
 }
 .progress-fill.secondary {
   background: var(--lavender);
@@ -897,7 +899,7 @@ label {
   height: 40px;
   border-radius: 12px;
   color: var(--accent);
-  background: #96f2cc1a;
+  background: #789fff1a;
   margin-bottom: 14px;
 }
 .empty-state strong {
@@ -993,7 +995,7 @@ label {
 .tabs button.active {
   color: var(--text);
   background: var(--surface);
-  box-shadow: 0 1px 4px #1a2d1a14;
+  box-shadow: 0 1px 4px #222e4a14;
 }
 .tabs button.active:after {
   display: none;

@@ -194,7 +194,7 @@ export function Status({ value }: { value: string }) {
     "won",
     "ready",
   ].includes(lower)
-    ? "green"
+    ? "accent"
     : [
           "pending",
           "review",

@@ -120,7 +120,7 @@ export default function Course() {
           value={currency(metrics.revenue)}
           detail={`${currency(metrics.revenueRemaining)} remaining`}
           progress={percentage(metrics.revenue, cycle.revenue_target)}
-          iconTone="green"
+          iconTone="gold"
         />
         <MetricCard
           icon={MessageCircle}
@@ -300,7 +300,7 @@ export default function Course() {
                     key={item.id}
                     onClick={() => openForm("promotion", asRecord(item))}
                   >
-                    <span className="record-icon green">
+                    <span className="record-icon gold">
                       <Megaphone size={17} />
                     </span>
                     <span className="record-main">
@@ -310,7 +310,7 @@ export default function Course() {
                         {displayDate(item.promotion_date)}
                       </small>
                     </span>
-                    <Pill tone="green" dot>
+                    <Pill tone="gold" dot>
                       Shared
                     </Pill>
                   </button>
@@ -335,7 +335,7 @@ export default function Course() {
         </section>
         <aside className="module-aside">
           <section className="panel side-panel">
-            <div className="side-panel-icon green">
+            <div className="side-panel-icon gold">
               <MessageCircle size={18} />
             </div>
             <span className="overline">DAILY RHYTHM</span>
@@ -384,7 +384,7 @@ export default function Course() {
             </div>
             <Progress
               value={percentage(metrics.revenue, cycle.revenue_target)}
-              color="green"
+              color="gold"
             />
             <button
               className="side-link"

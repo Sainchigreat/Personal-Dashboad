@@ -130,7 +130,7 @@
   border-radius: 9px;
   display: grid;
   place-items: center;
-  background: #95f5cd1a;
+  background: #789fff1a;
 }
 .calendar-glyph {
   display: grid;
@@ -157,7 +157,7 @@
   align-items: flex-start;
   gap: 9px;
   color: var(--muted);
-  background: #88bea80d;
+  background: #789fff0d;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;

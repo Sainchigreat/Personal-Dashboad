@@ -79,7 +79,7 @@ const quickActions: Array<{
     label: "Log a sale",
     description: "Record a payment",
     icon: CircleDollarSign,
-    tone: "green",
+    tone: "gold",
   },
   {
     name: "prospect",

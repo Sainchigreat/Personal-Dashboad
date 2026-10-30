@@ -45,7 +45,7 @@
   height: 48px;
   border-radius: 13px;
   color: var(--accent);
-  background: #aae7ce23;
+  background: #789fff23;
 }
 .content-list {
   overflow: hidden;
@@ -70,21 +70,21 @@
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #8bc3ac2b;
+  background: #789fff2b;
   color: var(--text);
   font-size: 11px;
   font-weight: 700;
 }
 .platform-linkedin {
-  background: #6fba9b2a;
+  background: #789fff2a;
   color: var(--accent);
 }
 .platform-youtube {
-  background: #82b49f2a;
+  background: #789fff2a;
   color: var(--accent);
 }
 .platform-whatsapp {
-  background: #84bba42a;
+  background: #789fff2a;
   color: var(--accent);
 }
 .content-main {
@@ -184,7 +184,7 @@
   height: 44px;
   border-radius: 11px;
   color: var(--accent);
-  background: #a4ffd91d;
+  background: #789fff1d;
 }
 .review-stats {
   display: grid;
