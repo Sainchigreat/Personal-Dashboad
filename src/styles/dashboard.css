@@ -584,3 +584,20 @@
     padding: 18px;
   }
 }
+
+
+/* Monthly goal engine */
+.goal-engine-panel { margin-top: 18px; padding: 20px; }
+.goal-engine-panel > .section-heading { align-items: flex-start; margin-bottom: 16px; }
+.goal-engine-panel > .section-heading h2 { margin: 5px 0; font-size: 15px; font-weight: 600; }
+.goal-engine-panel > .section-heading p { margin: 0; max-width: 560px; color: var(--muted); font-size: 11px; }
+.goal-engine-panel > .section-heading > button { display: inline-flex; align-items: center; gap: 5px; flex: none; border: 0; background: transparent; color: var(--muted); font-size: 10px; }
+.goal-engine-panel > .section-heading > button:hover { color: var(--accent); }
+.goal-engine-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.goal-engine-item { display: grid; gap: 7px; min-width: 0; padding: 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); }
+.goal-engine-item > strong { color: var(--muted); font-size: 10px; font-weight: 600; }
+.goal-engine-item > b { color: var(--text); font-size: 13px; font-weight: 600; }
+.goal-engine-item > small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.goal-engine-track { height: 6px; overflow: hidden; border-radius: 8px; background: var(--progress-ring); }
+.goal-engine-track span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+@media (max-width: 640px) { .goal-engine-grid { grid-template-columns: 1fr; } .goal-engine-panel > .section-heading { flex-direction: column; } }
