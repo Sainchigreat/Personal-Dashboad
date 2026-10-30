@@ -86,43 +86,29 @@ export function dateInZone(timeZone: string, date = new Date()): string {
 }
 
 const defaultTemplates = [
-  {
-    title: "Follow up on course enquiries",
-    category: "Course Growth",
-    priority: "high",
-    estimated_minutes: 20,
-  },
-  {
-    title: "Reach out to potential clients",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 60,
-  },
-  {
-    title: "Make progress on a creative project",
-    category: "Creative Studio",
-    priority: "high",
-    estimated_minutes: 60,
-  },
-  {
-    title: "Share useful work on WhatsApp",
-    category: "Course Growth",
-    priority: "medium",
-    estimated_minutes: 15,
-  },
-  {
-    title: "Capture a content idea",
-    category: "Personal Brand",
-    priority: "medium",
-    estimated_minutes: 10,
-  },
-  {
-    title: "Plan tomorrow’s top three outcomes",
-    category: "Personal",
-    priority: "low",
-    estimated_minutes: 10,
-  },
+  { title: "Publish today's Graphic Design with AI course promotion on WhatsApp Status", category: "Course Growth", priority: "high", estimated_minutes: 20 },
+  { title: "Respond to course enquiries and follow up warm leads", category: "Course Growth", priority: "high", estimated_minutes: 30 },
+  { title: "Complete and log 20 targeted client outreach actions", category: "Client Pipeline", priority: "high", estimated_minutes: 75 },
+  { title: "Review the 5 AM batch: 10 job listings and 10 trigger-based outreach targets", category: "Client Pipeline", priority: "high", estimated_minutes: 25, scheduled_time: "05:00" },
+  { title: "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners", category: "Client Pipeline", priority: "high", estimated_minutes: 25, scheduled_time: "06:00" },
+  { title: "Review the 8 AM batch: 10 fresh job listings and 10 trigger-based outreach targets", category: "Client Pipeline", priority: "high", estimated_minutes: 25, scheduled_time: "08:00" },
+  { title: "Capture one useful idea or lesson for your personal brand", category: "Personal Brand", priority: "medium", estimated_minutes: 15 },
+  { title: "Record today's wins, blockers and tomorrow's first action", category: "Personal", priority: "low", estimated_minutes: 10 },
 ];
+
+
+// Upgrade only the untouched starter routine. Personalised daily templates are
+// deliberately preserved so an owner does not lose their own operating rhythm.
+const legacyTemplates = [
+  { title: "Follow up on course enquiries", category: "Course Growth", priority: "high", estimated_minutes: 20 },
+  { title: "Reach out to potential clients", category: "Client Pipeline", priority: "high", estimated_minutes: 60 },
+  { title: "Make progress on a creative project", category: "Creative Studio", priority: "high", estimated_minutes: 60 },
+  { title: "Share useful work on WhatsApp", category: "Course Growth", priority: "medium", estimated_minutes: 15 },
+  { title: "Capture a content idea", category: "Personal Brand", priority: "medium", estimated_minutes: 10 },
+  { title: "Plan tomorrow’s top three outcomes", category: "Personal", priority: "low", estimated_minutes: 10 },
+];
+db.prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE daily_templates=?")
+  .run(JSON.stringify(defaultTemplates), now(), JSON.stringify(legacyTemplates));
 
 export function createWorkspace(
   userId: string,
@@ -202,67 +188,119 @@ export function createWorkspace(
   }
 }
 
-/** Generates editable plans, never completed activity, once per local calendar day. */
+function addDays(day: string, amount: number): string {
+  const date = new Date(`${day}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+function weekday(day: string): number {
+  return new Date(`${day}T12:00:00.000Z`).getUTCDay();
+}
+
+/**
+ * Generates editable daily plans in the owner's timezone. Planned work is
+ * never counted as completed activity. The planner is idempotent per day.
+ */
 export function ensureDailyPlan(userId: string) {
   const profile = db
-    .prepare(
-      "SELECT timezone,auto_plan,daily_templates FROM settings WHERE user_id=?",
-    )
-    .get(userId) as
-    | { timezone: string; auto_plan: number; daily_templates: string }
-    | undefined;
-  if (!profile || !profile.auto_plan) return;
-  const day = dateInZone(profile.timezone);
-  let templates: Array<{
-    title?: string;
-    category?: string;
-    priority?: string;
-    estimated_minutes?: number;
-  }>;
-  try {
-    templates = JSON.parse(profile.daily_templates);
-  } catch {
-    return;
-  }
-  if (!Array.isArray(templates)) return;
-  const already = db
-    .prepare("SELECT day FROM generated_days WHERE user_id=? AND day=?")
-    .get(userId, day);
-  if (already) return;
-  const cycle = db
-    .prepare("SELECT id FROM cycles WHERE user_id=? AND month=?")
+    .prepare("SELECT timezone,auto_plan,daily_templates FROM settings WHERE user_id=?")
+    .get(userId) as { timezone: string; auto_plan: number; daily_templates: string } | undefined;
+  if (!profile) return;
+  const day = dateInZone(profile.timezone || "Africa/Lagos");
+  const cycle = db.prepare("SELECT id FROM cycles WHERE user_id=? AND month=?")
     .get(userId, day.slice(0, 7)) as { id: string } | undefined;
+
+  // Create a guest-confirmation task exactly seven days before a scheduled
+  // Next Chapter session. This check runs even if today's plan already exists.
+  const sessionDay = addDays(day, 7);
+  const sessions = db.prepare(
+    "SELECT id,title,guest FROM chapter_sessions WHERE user_id=? AND session_date=? AND status NOT IN ('Archived','Completed')"
+  ).all(userId, sessionDay) as Array<{ id: string; title: string; guest: string }>;
+  for (const session of sessions) {
+    const title = session.guest
+      ? `Confirm next week's Next Chapter guest: ${session.guest}`
+      : `Invite and confirm a guest for Next Chapter: ${session.title}`;
+    const exists = db.prepare("SELECT 1 FROM tasks WHERE user_id=? AND session_id=? AND title=?")
+      .get(userId, session.id, title);
+    if (!exists) {
+      const stamp = now();
+      db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,session_id,title,description,category,priority,status,due_date,estimated_minutes,sort_order,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,'Next Chapter','high','todo',?,30,20,?,?)`)
+        .run(id(), userId, cycle?.id || null, session.id, title,
+          "This reminder is scheduled seven days before the live session. Confirm the guest and update the session record.",
+          day, stamp, stamp);
+    }
+  }
+
+  if (!profile.auto_plan) return;
+  let templates: Array<{ title?: string; category?: string; priority?: string; estimated_minutes?: number; scheduled_time?: string }>;
+  try { templates = JSON.parse(profile.daily_templates); } catch { return; }
+  if (!Array.isArray(templates)) return;
+
+  const already = db.prepare("SELECT day FROM generated_days WHERE user_id=? AND day=?").get(userId, day);
+  if (already) return;
+
+  const dayOfWeek = weekday(day);
+  const planned = [...templates.slice(0, 20)];
+  const add = (title: string, category: string, priority = "high", minutes = 60) =>
+    planned.push({ title, category, priority, estimated_minutes: minutes });
+
+  // Creative work is deliberately split into two weekly production blocks.
+  if (dayOfWeek >= 1 && dayOfWeek <= 3)
+    add("Creative Project 1 — complete today's planned milestone", "Creative Studio", "high", 120);
+  if (dayOfWeek === 4 || dayOfWeek === 5)
+    add("Creative Project 2 — complete today's planned milestone", "Creative Studio", "high", 120);
+
+  // Course publishing days from the November operating plan.
+  if ([2, 3, 5].includes(dayOfWeek))
+    add("Publish and distribute this week's course-growth content", "Course Growth", "high", 45);
+
+  // Two Next Chapter editorial production blocks per week.
+  if (dayOfWeek === 2 || dayOfWeek === 4)
+    add("Develop one substantial Next Chapter content piece", "Next Chapter", "medium", 60);
+
+  if (dayOfWeek === 5) {
+    add("Prepare and deliver the weekly Next Chapter live session", "Next Chapter", "high", 90);
+    add("Review next week's guest and session readiness", "Next Chapter", "high", 20);
+  }
+  if (dayOfWeek === 6)
+    add("Batch creative assets and prepare next week's content drafts", "Personal Brand", "high", 90);
+  if (dayOfWeek === 0) {
+    add("Batch content and prepare the coming week's publishing schedule", "Personal Brand", "high", 90);
+    add("Plan two creative projects and confirm weekly milestones", "Creative Studio", "high", 30);
+    add("Create next Friday's Next Chapter session plan and begin guest outreach", "Next Chapter", "high", 30);
+  }
+
+  // Carry forward at most eight genuinely unfinished tasks. Preserve the
+  // original as history and link the new task to it; never auto-complete work.
+  const overdue = db.prepare(
+    "SELECT * FROM tasks WHERE user_id=? AND due_date<? AND status IN ('todo','in_progress','deferred') ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,due_date ASC LIMIT 8"
+  ).all(userId, day) as Array<Record<string, string | number | null>>;
   const stamp = now();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const result = db
-      .prepare("INSERT OR IGNORE INTO generated_days(user_id,day) VALUES (?,?)")
-      .run(userId, day);
+    const result = db.prepare("INSERT OR IGNORE INTO generated_days(user_id,day) VALUES (?,?)").run(userId, day);
     if (Number(result.changes)) {
-      const insert =
-        db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,title,category,priority,status,due_date,estimated_minutes,sort_order,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,'todo',?,?,?,?,?)`);
-      templates.slice(0, 30).forEach((template, index) => {
-        if (typeof template.title !== "string" || !template.title.trim())
-          return;
-        const priority = ["high", "medium", "low"].includes(
-          template.priority || "",
-        )
-          ? template.priority!
-          : "medium";
-        insert.run(
-          id(),
-          userId,
-          cycle?.id || null,
-          template.title.trim().slice(0, 200),
-          String(template.category || "Personal").slice(0, 80),
-          priority,
-          day,
-          Math.max(0, Math.min(1440, Number(template.estimated_minutes) || 0)),
-          index,
-          stamp,
-          stamp,
-        );
+      const carry = db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,project_id,session_id,carried_from_id,title,description,category,priority,status,due_date,scheduled_time,estimated_minutes,actual_minutes,sort_order,notes,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?, ?,?,?,'todo',?,?,?,?,?,?,?,?)`);
+      overdue.forEach((task) => {
+        carry.run(id(), userId, cycle?.id || task.cycle_id, task.project_id, task.session_id,
+          task.id, `Continue: ${String(task.title)}`, String(task.description || ""),
+          String(task.category || "Personal"), String(task.priority || "medium"),
+          day, String(task.scheduled_time || ""), Number(task.estimated_minutes || 0), 0,
+          Number(task.sort_order || 0), String(task.notes || ""), stamp, stamp);
+        db.prepare("UPDATE tasks SET status='carried',updated_at=? WHERE id=? AND user_id=?")
+          .run(stamp, task.id, userId);
+      });
+      const insert = db.prepare(`INSERT INTO tasks(id,user_id,cycle_id,title,category,priority,status,due_date,scheduled_time,estimated_minutes,sort_order,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,'todo',?,?,?,?,?,?)`);
+      planned.slice(0, 30).forEach((template, index) => {
+        if (typeof template.title !== "string" || !template.title.trim()) return;
+        const priority = ["high", "medium", "low"].includes(template.priority || "") ? template.priority! : "medium";
+        insert.run(id(), userId, cycle?.id || null, template.title.trim().slice(0, 200),
+          String(template.category || "Personal").slice(0, 80), priority, day,
+          String(template.scheduled_time || ""), Math.max(0, Math.min(1440, Number(template.estimated_minutes) || 0)),
+          index + overdue.length, stamp, stamp);
       });
     }
     db.exec("COMMIT");
