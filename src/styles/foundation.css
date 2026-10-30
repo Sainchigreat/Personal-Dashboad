@@ -1,4 +1,4 @@
-/* Neutral surfaces with a restrained green accent. */
+/* White-first surfaces with a small, purposeful colour palette. */
 :root {
   font-family:
     "Inter",
@@ -6,84 +6,75 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color-scheme: dark;
-  --bg: #111111;
-  --sidebar: #141414;
-  --topbar: #121212;
-  --surface: #1b1b1b;
-  --surface-2: #202020;
-  --surface-3: #292929;
-  --input: #171717;
-  --border: #303030;
-  --border-light: #414141;
-  --text: #f0f2f0;
-  --muted: #aab0aa;
-  --subtle: #899189;
-  --accent: #83d2a0;
-  --accent-strong: #147444;
-  --accent-hover: #196e44;
-  --accent-soft: #203529;
-  --progress-ring: #3a423c;
-  --hover: #292d2a;
-  --green: #83d2a0;
-  --danger: #f0aab0;
-  --danger-soft: #3a2528;
-  --shadow: 0 20px 50px #00000066;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-}
-:root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f6f6f5;
+  --bg: #f6f7f4;
   --sidebar: #ffffff;
   --topbar: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f5f6f5;
-  --surface-3: #eaedeb;
-  --input: #fafbfa;
-  --border: #e1e4e1;
-  --border-light: #cfd5d0;
-  --text: #1d211e;
-  --muted: #5d655f;
-  --subtle: #667069;
-  --accent: #166e43;
-  --accent-strong: #147444;
-  --accent-hover: #0f6038;
-  --accent-soft: #e7f4eb;
-  --progress-ring: #d4e2d7;
-  --hover: #f0f4f1;
-  --green: #166e43;
-  --danger: #ab3543;
+  --surface-2: #f8f9f6;
+  --surface-3: #eef1eb;
+  --input: #fafbf9;
+  --border: #e7ebe5;
+  --border-light: #d9dfd7;
+  --text: #202822;
+  --muted: #58645b;
+  --subtle: #687269;
+  --accent: #176b49;
+  --accent-strong: #1d6949;
+  --accent-hover: #125638;
+  --accent-soft: #e3f2e8;
+  --progress-ring: #e6ebe4;
+  --hover: #f3f6f1;
+  --green: #176b49;
+  --lavender: #674b9f;
+  --lavender-soft: #f0ebfa;
+  --peach: #a3512e;
+  --peach-soft: #fcece3;
+  --yellow: #80600f;
+  --yellow-soft: #fbf3db;
+  --mint-soft: #e4f4ea;
+  --chart-active: #8465c4;
+  --chart-completed: #55ad7d;
+  --danger: #a6363f;
   --danger-soft: #fff0f0;
-  --shadow: 0 20px 50px #1111111a;
+  --shadow: 0 20px 50px #2434271c;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
-/* Before JavaScript mounts, use the device setting instead of flashing dark. */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --bg: #f6f6f5;
-    --sidebar: #ffffff;
-    --topbar: #ffffff;
-    --surface: #ffffff;
-    --surface-2: #f5f6f5;
-    --surface-3: #eaedeb;
-    --input: #fafbfa;
-    --border: #e1e4e1;
-    --border-light: #cfd5d0;
-    --text: #1d211e;
-    --muted: #5d655f;
-    --subtle: #667069;
-    --accent: #166e43;
-    --accent-strong: #147444;
-    --accent-hover: #0f6038;
-    --accent-soft: #e7f4eb;
-    --progress-ring: #d4e2d7;
-    --hover: #f0f4f1;
-    --green: #166e43;
-    --danger: #ab3543;
-    --danger-soft: #fff0f0;
-    --shadow: 0 20px 50px #1111111a;
-  }
+/* Explicit dark and device preferences remain available in Settings. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111411;
+  --sidebar: #171a17;
+  --topbar: #171a17;
+  --surface: #1e221e;
+  --surface-2: #252a25;
+  --surface-3: #303730;
+  --input: #1a1f1a;
+  --border: #343b34;
+  --border-light: #4a554a;
+  --text: #f1f4ef;
+  --muted: #b9c2b8;
+  --subtle: #a6b1a5;
+  --accent: #8bd1a7;
+  --accent-strong: #24764e;
+  --accent-hover: #1d6743;
+  --accent-soft: #253b2d;
+  --progress-ring: #3c443b;
+  --hover: #303a30;
+  --green: #8bd1a7;
+  --lavender: #d1c0fa;
+  --lavender-soft: #352d42;
+  --peach: #f2b99c;
+  --peach-soft: #3f302a;
+  --yellow: #e5cd8c;
+  --yellow-soft: #3c3624;
+  --mint-soft: #263b2d;
+  --chart-active: #b89be8;
+  --chart-completed: #72c69a;
+  --danger: #f0aab0;
+  --danger-soft: #3a2528;
+  --shadow: 0 20px 50px #00000066;
 }
 * {
   box-sizing: border-box;
@@ -192,8 +183,8 @@ label {
   min-height: 100vh;
 }
 .sidebar {
-  width: 242px;
-  flex: 0 0 242px;
+  width: 224px;
+  flex: 0 0 224px;
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 40;
@@ -201,7 +192,7 @@ label {
   flex-direction: column;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
-  padding: 24px 15px 15px;
+  padding: 24px 14px 15px;
 }
 .sidebar-brand {
   padding: 0 8px 24px;
@@ -258,8 +249,8 @@ label {
   gap: 10px;
   padding: 11px 10px;
   border: 1px solid var(--border);
-  background: #ffffff04;
-  border-radius: 9px;
+  background: var(--surface-2);
+  border-radius: 12px;
   margin-bottom: 25px;
 }
 .workspace-label > span:nth-child(2) {
@@ -290,7 +281,7 @@ label {
   width: 31px;
   height: 31px;
   border-radius: 8px;
-  background: var(--surface-3);
+  background: var(--accent-soft);
   color: var(--accent);
   display: grid;
   place-items: center;
@@ -319,8 +310,8 @@ label {
   border: 0;
   background: transparent;
   color: var(--muted);
-  height: 37px;
-  border-radius: 7px;
+  height: 38px;
+  border-radius: 9px;
   padding: 0 11px;
   gap: 11px;
   text-align: left;
@@ -343,24 +334,13 @@ label {
   background: var(--accent-soft);
 }
 .nav-item.active:before {
-  content: "";
-  position: absolute;
-  left: -15px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  background: var(--accent);
-  border-radius: 0 2px 2px 0;
+  display: none;
 }
 .nav-item.active svg {
   color: var(--accent);
 }
 .nav-active-dot {
-  width: 5px;
-  height: 5px;
-  background: var(--accent);
-  border-radius: 50%;
-  margin-left: auto;
+  display: none;
 }
 .sidebar-bottom {
   margin-top: auto;
@@ -370,7 +350,7 @@ label {
   display: block;
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, var(--surface-3), var(--surface-2));
+  background: var(--surface-2);
   border: 1px solid var(--border-light);
   border-radius: 9px;
   text-align: left;
@@ -461,7 +441,7 @@ label {
 .main-shell {
   min-width: 0;
   flex: 1;
-  margin-left: 242px;
+  margin-left: 224px;
 }
 .topbar {
   height: 65px;
@@ -511,8 +491,8 @@ label {
   gap: 9px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: #ffffff04;
-  color: var(--subtle);
+  background: var(--surface-2);
+  color: var(--muted);
   padding: 0 10px;
   font-size: 11px;
   text-align: left;
@@ -569,7 +549,7 @@ label {
   flex: none;
 }
 .icon-button:hover {
-  background: #ffffff0a;
+  background: var(--hover);
   color: var(--text);
 }
 .popover-anchor {
@@ -626,7 +606,7 @@ label {
 }
 .popover > button:hover,
 .search-results > button:hover {
-  background: #ffffff0a;
+  background: var(--hover);
 }
 .popover > button > span:nth-child(2),
 .search-results > button > span:nth-child(2),
@@ -659,12 +639,12 @@ label {
   background: #7ac5a61a;
 }
 .quick-icon.secondary {
-  color: var(--accent);
-  background: #b0f5d81a;
+  color: var(--lavender);
+  background: var(--lavender-soft);
 }
 .quick-icon.highlight {
-  color: var(--accent);
-  background: #9af3ce1a;
+  color: var(--peach);
+  background: var(--peach-soft);
 }
 .popover-empty {
   color: var(--muted);
@@ -698,9 +678,9 @@ label {
   justify-content: center;
   gap: 8px;
   border: 1px solid var(--border-light);
-  border-radius: 7px;
-  height: 35px;
-  padding: 0 13px;
+  border-radius: 9px;
+  height: 36px;
+  padding: 0 14px;
   white-space: nowrap;
   background: var(--surface-2);
   color: var(--text);
@@ -719,7 +699,7 @@ label {
   color: #ffffff;
   background: var(--accent-strong);
   border-color: var(--accent);
-  box-shadow: 0 3px 12px #7ce8bb26;
+  box-shadow: none;
 }
 .button.primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -793,7 +773,7 @@ label {
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 15px;
   min-width: 0;
 }
 .section-heading {
@@ -801,6 +781,9 @@ label {
   align-items: flex-start;
   justify-content: space-between;
   gap: 15px;
+}
+.muted-icon {
+  color: var(--muted);
 }
 .section-heading h2 {
   font-size: 15px;
@@ -854,19 +837,19 @@ label {
   border-color: #7ec7a828;
 }
 .pill.secondary {
-  color: var(--text);
-  background: #afefd41a;
-  border-color: #afefd428;
+  color: var(--lavender);
+  background: var(--lavender-soft);
+  border-color: transparent;
 }
 .pill.highlight {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--border-light);
+  color: var(--peach);
+  background: var(--peach-soft);
+  border-color: transparent;
 }
 .pill.amber {
-  color: var(--muted);
-  background: var(--surface-3);
-  border-color: var(--border-light);
+  color: var(--yellow);
+  background: var(--yellow-soft);
+  border-color: transparent;
 }
 .pill.muted {
   color: var(--muted);
@@ -893,13 +876,10 @@ label {
   background: var(--accent);
 }
 .progress-fill.secondary {
-  background: var(--accent);
+  background: var(--lavender);
 }
 .progress-fill.highlight {
-  background: var(--accent);
-}
-:root[data-theme="light"] .progress-track {
-  background: var(--accent-soft);
+  background: var(--peach);
 }
 .empty-state {
   display: flex;
@@ -952,7 +932,7 @@ label {
 }
 .completed {
   text-decoration: line-through;
-  opacity: 0.55;
+  color: var(--muted);
 }
 .tabs {
   display: flex;
@@ -995,4 +975,30 @@ label {
   padding: 2px 5px;
   border-radius: 4px;
   background: #ffffff08;
+}
+
+/* Compact pill navigation keeps filters visible without adding visual noise. */
+.tabs {
+  gap: 3px;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-3);
+}
+.tabs button {
+  padding: 8px 12px;
+  border-radius: 9px;
+}
+.tabs button.active {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 4px #1a2d1a14;
+}
+.tabs button.active:after {
+  display: none;
+}
+.tabs button span {
+  background: var(--surface-3);
+  color: var(--muted);
 }

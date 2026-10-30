@@ -117,8 +117,8 @@
   padding: 30px;
   border-radius: 13px;
   border: 1px solid var(--border-light);
-  background: var(--surface-2);
-  box-shadow: 0 22px 70px #05050555;
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 .auth-icon {
   width: 39px;

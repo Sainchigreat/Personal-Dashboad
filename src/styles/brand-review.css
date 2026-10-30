@@ -7,7 +7,7 @@
   margin-bottom: 18px;
   border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  background: var(--yellow-soft);
 }
 .content-overview-copy {
   flex: 1;
@@ -165,7 +165,7 @@
   padding: 21px 23px;
   border: 1px solid var(--border-light);
   border-radius: 9px;
-  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  background: var(--yellow-soft);
 }
 .review-intro h2 {
   color: var(--text);

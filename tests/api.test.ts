@@ -115,7 +115,7 @@ describe("private persistent workspace API", () => {
       timezone: "Africa/Lagos",
       work_start: "08:00",
       work_end: "17:00",
-      theme: "system",
+      theme: "light",
     });
     expect(data.products[0]).toMatchObject({
       name: "Graphic Design with AI",

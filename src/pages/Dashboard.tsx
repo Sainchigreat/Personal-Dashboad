@@ -3,67 +3,79 @@ import {
   ArrowRight,
   ArrowUpRight,
   CalendarClock,
-  CheckCircle2,
+  CalendarDays,
   ChevronRight,
   CircleDollarSign,
   Clapperboard,
-  Clock3,
-  Crosshair,
-  Headphones,
-  LayoutGrid,
   ListTodo,
   Plus,
   Radio,
   Sparkles,
   TrendingUp,
   UsersRound,
-  Zap,
 } from "lucide-react";
 import { asRecord, useApp } from "../lib/store";
+import { displayDate, displayMonth, greeting, weekdayNames } from "../lib/date";
 import {
-  displayDate,
-  displayMonth,
-  getTime,
-  greeting,
-  weekdayNames,
-} from "../lib/date";
-import { currency, cycleMetrics, isOpenTask, percentage } from "../lib/metrics";
+  currency,
+  cycleMetrics,
+  isOpenTask,
+  percentage,
+  projectOverview,
+} from "../lib/metrics";
 import {
   Button,
   Checkbox,
   EmptyState,
   MetricCard,
-  Pill,
   SectionHeading,
   TextLink,
 } from "../components/UI";
 import type { Page, Task } from "../types";
 
+function taskTone(category: string) {
+  if (category === "Course Growth") return "lavender";
+  if (category === "Client Pipeline") return "peach";
+  if (category === "Creative Studio") return "mint";
+  if (category === "Next Chapter") return "yellow";
+  return "neutral";
+}
+
 export default function Dashboard() {
   const { data, cycle, today, setPage, openForm, update, toast } = useApp();
-  const [time, setTime] = useState(() => getTime(data.settings.timezone));
+  const [salutation, setSalutation] = useState(() =>
+    greeting(data.settings.timezone),
+  );
   useEffect(() => {
-    setTime(getTime(data.settings.timezone));
-    const timer = window.setInterval(
-      () => setTime(getTime(data.settings.timezone)),
-      30_000,
-    );
+    const updateGreeting = () =>
+      setSalutation(greeting(data.settings.timezone));
+    updateGreeting();
+    const timer = window.setInterval(updateGreeting, 60_000);
     return () => window.clearInterval(timer);
   }, [data.settings.timezone]);
   const metrics = cycleMetrics(data, cycle, today);
-  const dayPct = percentage(metrics.done, metrics.tasks.length);
   const firstName = data.settings.name.trim().split(/\s+/)[0] || "there";
   const priorities = [...metrics.tasks]
     .sort((a, b) => {
       const rank = { high: 0, medium: 1, low: 2 };
       return rank[a.priority] - rank[b.priority] || a.sort_order - b.sort_order;
     })
-    .slice(0, 3);
-  const activeProjects = data.projects
-    .filter((project) => project.stage !== "Completed")
-    .slice(0, 3);
+    .slice(0, 4);
+  const {
+    active: activeProjects,
+    completed: completedProjects,
+    total: totalProjects,
+    activePercent,
+  } = projectOverview(data.projects);
+  const projectRing = totalProjects
+    ? `conic-gradient(var(--chart-active) 0% ${activePercent}%, var(--chart-completed) ${activePercent}% 100%)`
+    : "var(--progress-ring)";
   const upcomingSession = data.chapter_sessions
-    .filter((item) => item.session_date >= today && item.status !== "Archived")
+    .filter(
+      (item) =>
+        item.session_date >= today &&
+        !["Completed", "Archived"].includes(item.status),
+    )
     .sort((a, b) => a.session_date.localeCompare(b.session_date))[0];
   const followups = [
     ...data.prospects
@@ -114,7 +126,8 @@ export default function Dashboard() {
       })),
   ]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 3);
+    .slice(0, 4);
+
   async function toggle(task: Task) {
     try {
       await update("tasks", task.id, {
@@ -124,7 +137,7 @@ export default function Dashboard() {
       toast(e instanceof Error ? e.message : "Could not update task.", "error");
     }
   }
-  const progressBackground = `conic-gradient(var(--accent-strong) ${dayPct * 3.6}deg, var(--progress-ring) 0deg)`;
+
   return (
     <div className="dashboard-page">
       {cycle.status === "active" && today.slice(0, 7) > cycle.month && (
@@ -141,115 +154,49 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-      <div className="welcome-row">
+
+      <div className="dashboard-welcome">
         <div>
-          <div className="welcome-date">
-            <span className="live-dot" />{" "}
-            {displayDate(today, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            }).toUpperCase()}{" "}
-            <span className="date-divider">/</span> {time.toUpperCase()}{" "}
-            <span className="date-zone">
-              {data.settings.timezone === "Africa/Lagos"
-                ? "WAT"
-                : data.settings.timezone}
-            </span>
+          <div className="dashboard-date">
+            <span className="live-dot" />
+            <time dateTime={today}>
+              {displayDate(today, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </time>
           </div>
           <h1>
-            {greeting(data.settings.timezone)}, {firstName}
-            <span className="welcome-period">.</span>
+            {salutation}, {firstName}.
           </h1>
-          <p>Here’s what’s happening in your workspace today.</p>
+          <p>A little clarity for everything you’re working towards.</p>
         </div>
-        <Button icon={Plus} onClick={() => openForm("task")}>
+        <Button variant="primary" icon={Plus} onClick={() => openForm("task")}>
           Add a task
         </Button>
       </div>
 
-      <section className="hero-card">
-        <div className="hero-content">
-          <div className="hero-kicker">
-            <span className="hero-kicker-icon">
-              <Sparkles size={13} />
-            </span>{" "}
-            YOUR OPERATING CYCLE <span className="kicker-separator">/</span>{" "}
-            {displayMonth(cycle.month).toUpperCase()}
-          </div>
-          <h2>
-            One system. <span>Every ambition.</span>
-          </h2>
-          <p>
-            {cycle.objective ||
-              "Set an objective for this cycle and give your work a clear direction."}
-          </p>
-          <div className="hero-actions">
-            <Button variant="primary" onClick={() => setPage("day")}>
-              Plan my day <ArrowRight size={15} />
-            </Button>
-            <button
-              className="hero-secondary"
-              onClick={() => openForm("cycle", asRecord(cycle))}
-            >
-              View cycle goals <ArrowUpRight size={14} />
-            </button>
-          </div>
-          <div className="hero-theme">
-            <span className="theme-indicator" />
-            <span>MONTHLY THEME</span>
-            <strong>{cycle.theme || "Set a theme"}</strong>
-          </div>
-        </div>
-        <div
-          className="hero-art"
-          aria-label={`${dayPct}% of today’s planned tasks completed`}
-        >
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="orbit orbit-three" />
-          <div className="orbit-star orbit-star-one" />
-          <div className="orbit-star orbit-star-two" />
-          <div
-            className="progress-orbit"
-            style={{ background: progressBackground }}
-          >
-            <div className="progress-orbit-inner">
-              <span>TODAY’S PROGRESS</span>
-              <strong>
-                {dayPct}
-                <small>%</small>
-              </strong>
-              <em>
-                {metrics.done} of {metrics.tasks.length} tasks done
-              </em>
-            </div>
-          </div>
-          <div className="orbit-tag">
-            <span className="tag-icon">
-              <Zap size={14} />
-            </span>
-            <span>
-              <strong>Keep showing up</strong>
-              <small>Progress over perfection</small>
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <div className="overview-heading">
+      <div className="dashboard-section-title">
         <div>
-          <span className="overline">THE BIG PICTURE</span>
-          <h2>
-            Your momentum <span>at a glance</span>
-          </h2>
+          <span className="overline">YOUR WORKSPACE</span>
+          <h2>At a glance</h2>
         </div>
-        <button onClick={() => setPage("settings")}>
-          Cycle settings <ArrowUpRight size={14} />
+        <button
+          className="cycle-chip"
+          onClick={() => openForm("cycle", asRecord(cycle))}
+          aria-label={`Edit ${displayMonth(cycle.month)} cycle`}
+        >
+          <CalendarDays size={15} />
+          <span>{displayMonth(cycle.month)}</span>
+          <ChevronRight size={14} />
         </button>
       </div>
-      <section className="metrics-grid" aria-label="Progress overview">
+      <section
+        className="metrics-grid dashboard-metrics"
+        aria-label="Progress overview"
+      >
         <MetricCard
           icon={CircleDollarSign}
           iconTone="accent"
@@ -260,11 +207,7 @@ export default function Dashboard() {
               <span> / {cycle.sales_target}</span>
             </>
           }
-          detail={
-            <>
-              <span className="detail-dot accent" /> Paid sales this cycle
-            </>
-          }
+          detail="Paid sales this cycle"
           progress={percentage(metrics.sales, cycle.sales_target)}
           onClick={() => setPage("course")}
         />
@@ -273,7 +216,7 @@ export default function Dashboard() {
           iconTone="green"
           label="Revenue"
           value={currency(metrics.revenue)}
-          detail={<>of {currency(cycle.revenue_target)} target</>}
+          detail={`of ${currency(cycle.revenue_target)} target`}
           progress={percentage(metrics.revenue, cycle.revenue_target)}
           onClick={() => setPage("course")}
         />
@@ -287,11 +230,7 @@ export default function Dashboard() {
               <span> / {cycle.outreach_target}</span>
             </>
           }
-          detail={
-            <>
-              <span className="detail-dot secondary" /> Outreach actions today
-            </>
-          }
+          detail="Outreach actions today"
           progress={percentage(metrics.outreach, cycle.outreach_target)}
           onClick={() => setPage("pipeline")}
         />
@@ -305,57 +244,49 @@ export default function Dashboard() {
               <span> / {cycle.projects_target}</span>
             </>
           }
-          detail={
-            <>
-              <span className="detail-dot highlight" /> Completed this week
-            </>
-          }
+          detail="Completed this week"
           progress={percentage(metrics.projectsDone, cycle.projects_target)}
           onClick={() => setPage("studio")}
         />
       </section>
 
-      <div className="dashboard-columns">
-        <section className="panel priority-panel">
+      <div className="dashboard-board">
+        <section className="panel dashboard-tasks">
           <SectionHeading
-            title="Today’s priorities"
-            sub="A little focus goes a long way."
+            title="Today’s tasks"
+            sub={`${metrics.done} of ${metrics.tasks.length} completed`}
             action={
-              <TextLink onClick={() => setPage("day")}>View my day</TextLink>
+              <TextLink onClick={() => setPage("day")} arrow={false}>
+                View all
+              </TextLink>
             }
           />
-          <div className="priority-list">
+          <div className="dashboard-task-list">
             {priorities.length ? (
-              priorities.map((task, index) => (
-                <div className="priority-row" key={task.id}>
-                  <span className="priority-number">0{index + 1}</span>
+              priorities.map((task) => (
+                <div
+                  className={`dashboard-task task-${taskTone(task.category)}`}
+                  key={task.id}
+                >
                   <Checkbox
                     checked={task.status === "done"}
                     onChange={() => toggle(task)}
                     label={`${task.status === "done" ? "Reopen" : "Complete"} ${task.title}`}
                   />
                   <button
-                    className={`task-title-button ${task.status === "done" ? "completed" : ""}`}
+                    className={`dashboard-task-copy ${task.status === "done" ? "completed" : ""}`}
                     onClick={() => openForm("task", asRecord(task))}
                   >
                     <strong>{task.title}</strong>
                     <small>
-                      {task.category}{" "}
-                      {task.estimated_minutes > 0 && (
-                        <>
-                          {" "}
-                          <span>·</span> {task.estimated_minutes} min
-                        </>
-                      )}
+                      {task.category}
+                      {task.estimated_minutes > 0 &&
+                        ` · ${task.estimated_minutes} min`}
                     </small>
                   </button>
-                  <Pill tone={task.priority === "high" ? "accent" : "neutral"}>
-                    {task.priority === "high"
-                      ? "High priority"
-                      : task.priority === "medium"
-                        ? "Medium"
-                        : "Low"}
-                  </Pill>
+                  <span className="dashboard-task-priority">
+                    {task.status === "done" ? "Done" : task.priority}
+                  </span>
                 </div>
               ))
             ) : (
@@ -369,110 +300,137 @@ export default function Dashboard() {
                     icon={Plus}
                     onClick={() => openForm("task")}
                   >
-                    Add your first task
+                    Add a task
                   </Button>
                 }
               />
             )}
           </div>
-          <button className="panel-bottom-link" onClick={() => setPage("day")}>
-            <span>
-              <span className="bottom-link-icon">
-                <CheckCircle2 size={15} />
-              </span>
-              {metrics.done} of {metrics.tasks.length} tasks completed today
-            </span>
-            <span>
-              Open daily plan <ArrowRight size={14} />
-            </span>
+          <button
+            className="dashboard-panel-link"
+            onClick={() => setPage("day")}
+          >
+            <span>Open my daily plan</span>
+            <ArrowRight size={15} />
           </button>
         </section>
-        <div className="dashboard-side">
-          <section className="panel chapter-card">
-            <div className="chapter-head">
-              <div>
-                <div className="mini-overline">
-                  <span /> NEXT CHAPTER
+
+        <div className="dashboard-stack">
+          <section className="panel project-overview">
+            <SectionHeading
+              title="Project overview"
+              sub="All projects in your studio"
+              action={
+                <TextLink onClick={() => setPage("studio")} arrow={false}>
+                  View all
+                </TextLink>
+              }
+            />
+            <div className="project-overview-body">
+              <div
+                className="project-ring"
+                style={{ background: projectRing }}
+                role="img"
+                aria-label={`${totalProjects} total projects: ${activeProjects.length} active and ${completedProjects} completed`}
+              >
+                <div>
+                  <strong>{totalProjects}</strong>
+                  <span>projects</span>
                 </div>
-                <h2>
-                  A conversation about
-                  <br />
-                  the future of creativity.
-                </h2>
               </div>
-              <span className="chapter-icon">
-                <Radio size={20} />
-              </span>
-            </div>
-            <div className="chapter-divider" />
-            {upcomingSession ? (
-              <div className="chapter-next">
-                <div className="session-date">
-                  <strong>
-                    {displayDate(upcomingSession.session_date, {
-                      day: "numeric",
-                    })}
-                  </strong>
-                  <span>
-                    {displayDate(upcomingSession.session_date, {
-                      month: "short",
-                    }).toUpperCase()}
-                  </span>
+              <div className="project-legend">
+                <div>
+                  <span className="legend-dot active" />
+                  <span>Active</span>
+                  <strong>{activeProjects.length}</strong>
                 </div>
                 <div>
-                  <span>NEXT SESSION</span>
-                  <strong>{upcomingSession.title}</strong>
-                  <small>
-                    {upcomingSession.guest
-                      ? `With ${upcomingSession.guest}`
-                      : upcomingSession.status}
-                  </small>
+                  <span className="legend-dot complete" />
+                  <span>Completed</span>
+                  <strong>{completedProjects}</strong>
                 </div>
-                <button
-                  aria-label="Open Next Chapter"
-                  onClick={() => setPage("chapter")}
-                >
-                  <ArrowUpRight size={16} />
-                </button>
+              </div>
+            </div>
+            {activeProjects.length ? (
+              <div className="project-preview-list">
+                {activeProjects.slice(0, 2).map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => openForm("project", asRecord(project))}
+                  >
+                    <span>
+                      <strong>{project.title}</strong>
+                      <small>{project.stage}</small>
+                    </span>
+                    <ChevronRight size={15} />
+                  </button>
+                ))}
               </div>
             ) : (
-              <div className="chapter-empty">
-                <div>
-                  <strong>No session planned yet</strong>
-                  <span>
-                    Weekly rhythm · {weekdayNames[cycle.session_day]}s
-                  </span>
-                </div>
-                <button onClick={() => openForm("session")}>
-                  Plan session <ArrowRight size={14} />
-                </button>
-              </div>
+              <button
+                className="dashboard-panel-link"
+                onClick={() => openForm("project")}
+              >
+                <span>
+                  {totalProjects
+                    ? "Start another project"
+                    : "Create your first project"}
+                </span>
+                <Plus size={15} />
+              </button>
             )}
           </section>
-          <section className="panel upcoming-panel">
+
+          <section className="cycle-focus-card">
+            <div className="cycle-focus-top">
+              <span className="cycle-focus-icon">
+                <Sparkles size={17} />
+              </span>
+              <span>YOUR {displayMonth(cycle.month).toUpperCase()} CYCLE</span>
+              <button
+                aria-label="Edit cycle goals"
+                onClick={() => openForm("cycle", asRecord(cycle))}
+              >
+                <ArrowUpRight size={16} />
+              </button>
+            </div>
+            <h2>{cycle.theme || "Set your focus"}</h2>
+            <p>
+              {cycle.objective ||
+                "Give this cycle a clear direction by adding an objective."}
+            </p>
+            <button
+              className="cycle-focus-link"
+              onClick={() => openForm("cycle", asRecord(cycle))}
+            >
+              View cycle goals <ArrowRight size={14} />
+            </button>
+          </section>
+        </div>
+
+        <div className="dashboard-stack dashboard-agenda">
+          <section className="panel dashboard-upcoming">
             <SectionHeading
               title="Coming up"
-              sub="Deadlines and follow-ups."
+              sub="Deadlines and follow-ups"
               action={<CalendarClock size={17} className="muted-icon" />}
             />
             {followups.length ? (
-              <div className="upcoming-list">
+              <div className="dashboard-upcoming-list">
                 {followups.map((item) => (
                   <button
                     key={`${item.page}-${item.id}`}
                     onClick={() => setPage(item.page)}
                   >
-                    <span className="upcoming-date">
+                    <span className="dashboard-date-tile">
                       <strong>
                         {displayDate(item.date, { day: "numeric" })}
                       </strong>
                       <small>
-                        {displayDate(item.date, {
-                          month: "short",
-                        }).toUpperCase()}
+                        {displayDate(item.date, { month: "short" })}
                       </small>
                     </span>
-                    <span>
+                    <span className="dashboard-upcoming-copy">
                       <strong>{item.title}</strong>
                       <small>
                         {item.category}
@@ -484,77 +442,49 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="upcoming-empty">
-                <span className="upcoming-empty-icon">
-                  <CalendarClock size={17} />
-                </span>
+              <div className="dashboard-upcoming-empty">
                 <span>
-                  <strong>All clear for now</strong>
-                  <small>Upcoming dates will appear here.</small>
+                  <CalendarClock size={19} />
                 </span>
+                <strong>All clear for now</strong>
+                <p>Deadlines and follow-ups will appear here.</p>
               </div>
             )}
           </section>
-        </div>
-      </div>
-      {activeProjects.length > 0 && (
-        <section className="panel dashboard-projects">
-          <SectionHeading
-            title="Creative work in progress"
-            sub="Your active projects and their current stages."
-            action={
-              <TextLink onClick={() => setPage("studio")}>Open studio</TextLink>
-            }
-          />
-          <div className="dashboard-project-list">
-            {activeProjects.map((project) => (
-              <button
-                key={project.id}
-                onClick={() => openForm("project", asRecord(project))}
-              >
-                <span className="record-icon highlight">
-                  <Clapperboard size={16} />
-                </span>
-                <span>
-                  <strong>{project.title}</strong>
-                  <small>
-                    {project.stage}
-                    {project.deadline &&
-                      ` · Due ${displayDate(project.deadline)}`}
-                  </small>
-                </span>
-                <ChevronRight size={14} />
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-      <div className="workspace-strip">
-        <div className="workspace-strip-title">
-          <span className="workspace-strip-icon">
-            <LayoutGrid size={17} />
-          </span>
-          <span>
-            <strong>Everything, in one place.</strong>
-            <small>Pick up wherever you left off.</small>
-          </span>
-        </div>
-        <div className="workspace-shortcuts">
-          <button onClick={() => setPage("studio")}>
-            <Clapperboard size={16} />
-            <span>Creative Studio</span>
-            <ChevronRight size={14} />
-          </button>
-          <button onClick={() => setPage("brand")}>
-            <Sparkles size={16} />
-            <span>Content library</span>
-            <ChevronRight size={14} />
-          </button>
-          <button onClick={() => setPage("review")}>
-            <Crosshair size={16} />
-            <span>Weekly review</span>
-            <ChevronRight size={14} />
-          </button>
+
+          <section className="next-chapter-card">
+            <div className="next-chapter-top">
+              <span>
+                <Radio size={18} />
+              </span>
+              <small>NEXT CHAPTER</small>
+            </div>
+            {upcomingSession ? (
+              <>
+                <h2>{upcomingSession.title}</h2>
+                <p>
+                  {displayDate(upcomingSession.session_date)}
+                  {upcomingSession.guest
+                    ? ` · With ${upcomingSession.guest}`
+                    : ` · ${upcomingSession.status}`}
+                </p>
+                <button onClick={() => setPage("chapter")}>
+                  Open Next Chapter <ArrowRight size={14} />
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>Make space for the next conversation.</h2>
+                <p>
+                  No session planned yet · Weekly rhythm:{" "}
+                  {weekdayNames[cycle.session_day]}s
+                </p>
+                <button onClick={() => openForm("session")}>
+                  Plan a session <ArrowRight size={14} />
+                </button>
+              </>
+            )}
+          </section>
         </div>
       </div>
     </div>

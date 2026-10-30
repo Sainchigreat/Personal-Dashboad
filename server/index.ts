@@ -186,7 +186,7 @@ app.get("/api/auth/status", (req, res) => {
           db
             .prepare("SELECT theme FROM settings WHERE user_id=?")
             .get(session.user_id) as { theme: string } | undefined
-        )?.theme || "system"
+        )?.theme || "light"
       : null,
   });
 });
@@ -276,7 +276,7 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
       // Team accounts have only a profile and team access; do not seed the
       // owner's private cycles, plans, revenue or clients into their portal.
       db.prepare(
-        "INSERT INTO settings(id,user_id,name,theme,auto_plan,daily_templates,created_at,updated_at) VALUES (?,?,?,'system',0,'[]',?,?)",
+        "INSERT INTO settings(id,user_id,name,theme,auto_plan,daily_templates,created_at,updated_at) VALUES (?,?,?,'light',0,'[]',?,?)",
       ).run(id(), userId, input.name, stamp, stamp);
       db.prepare(
         "INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,?,'active',?)",

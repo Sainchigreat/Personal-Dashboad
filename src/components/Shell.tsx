@@ -232,10 +232,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <Sparkles size={14} />
           </span>
           <span>
-            <strong>Personal workspace</strong>
-            <small>Your space to grow</small>
+            <strong>My workspace</strong>
+            <small>Personal</small>
           </span>
-          <ChevronDown size={14} />
+          <ChevronRight size={14} />
         </button>
         <nav className="sidebar-nav" aria-label="Main navigation">
           {groups.map((group) => (
@@ -300,12 +300,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div className="top-actions">
             <button
               className="search-trigger"
-              aria-label="Search workspace"
+              aria-label="Search workspace ⌘ K"
               onClick={() => setSearchOpen(true)}
             >
               <Search size={15} />
-              <span>Search anything...</span>
-              <kbd>⌘ K</kbd>
+              <span>Search workspace</span>
+              <kbd aria-hidden="true">⌘ K</kbd>
             </button>
             <label className="cycle-select">
               <CalendarDays size={15} />

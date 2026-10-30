@@ -382,7 +382,13 @@ export function MetricCard({
       </div>
       <div className="metric-value">{value}</div>
       <div className="metric-detail">{detail}</div>
-      {progress !== undefined && <Progress value={progress} color={iconTone} />}
+      {progress !== undefined && (
+        <Progress
+          value={progress}
+          color={iconTone}
+          label={`${label} progress`}
+        />
+      )}
     </div>
   );
 }

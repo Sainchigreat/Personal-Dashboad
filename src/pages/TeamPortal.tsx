@@ -273,7 +273,7 @@ function TeamSettings({
   signOut: () => Promise<void>;
 }) {
   const { data, refresh } = useTeam();
-  const [theme, setTheme] = useState<ThemePreference>(auth.theme || "system");
+  const [theme, setTheme] = useState<ThemePreference>(auth.theme || "light");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -312,8 +312,8 @@ function TeamSettings({
               setTheme(event.target.value as ThemePreference)
             }
           >
+            <option value="light">Light (default)</option>
             <option value="system">System · follow device</option>
-            <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
         </label>

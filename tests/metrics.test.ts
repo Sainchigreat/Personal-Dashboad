@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { addDays, todayInZone, weekStart } from "../src/lib/date";
-import { cycleMetrics, percentage, weekMetrics } from "../src/lib/metrics";
+import {
+  cycleMetrics,
+  percentage,
+  projectOverview,
+  weekMetrics,
+} from "../src/lib/metrics";
 import type { Cycle, Data } from "../src/types";
 
 const cycle = {
@@ -89,6 +94,24 @@ describe("date and metric rules", () => {
     expect(result.outreach).toBe(2);
     expect(result.done).toBe(1);
     expect(weekMetrics(fixture, "2026-11-02").replies).toBe(1);
+  });
+  it("builds the project chart from actual current stages, including an empty studio", () => {
+    expect(projectOverview([])).toEqual({
+      active: [],
+      total: 0,
+      completed: 0,
+      activePercent: 0,
+    });
+    const projects = [
+      { stage: "Brief" },
+      { stage: "Completed" },
+      { stage: "Review" },
+    ] as Data["projects"];
+    const summary = projectOverview(projects);
+    expect(summary.total).toBe(3);
+    expect(summary.active).toEqual([projects[0], projects[2]]);
+    expect(summary.completed).toBe(1);
+    expect(summary.activePercent).toBeCloseTo(200 / 3);
   });
   it("handles zero targets and caps progress indicators without altering totals", () => {
     expect(percentage(2, 0)).toBe(0);

@@ -8,7 +8,7 @@
   justify-content: space-between;
   min-height: 157px;
   padding: 23px 25px;
-  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  background: var(--mint-soft);
 }
 .module-banner > div:first-child {
   z-index: 2;
@@ -139,12 +139,12 @@
   background: #7fc6a819;
 }
 .record-icon.secondary {
-  color: var(--accent);
-  background: #ace9d01b;
+  color: var(--lavender);
+  background: var(--lavender-soft);
 }
 .record-icon.highlight {
-  color: var(--accent);
-  background: #94ebc71b;
+  color: var(--peach);
+  background: var(--peach-soft);
 }
 .record-main {
   flex: 1;
@@ -207,12 +207,12 @@
   background: #85cbae19;
 }
 .side-panel-icon.secondary {
-  color: var(--accent);
-  background: #aeefd41c;
+  color: var(--lavender);
+  background: var(--lavender-soft);
 }
 .side-panel-icon.highlight {
-  color: var(--accent);
-  background: #9beecb1a;
+  color: var(--peach);
+  background: var(--peach-soft);
 }
 .side-panel .button.wide {
   margin-top: 18px;

@@ -158,7 +158,7 @@ export function AppProvider({
     return () => window.clearTimeout(timer);
   }, [notice]);
   useEffect(
-    () => watchTheme(data?.settings.theme ?? auth?.theme ?? "system"),
+    () => watchTheme(data?.settings.theme ?? auth?.theme ?? "light"),
     [data?.settings.theme, auth?.theme],
   );
   const setPage = useCallback((value: Page) => {

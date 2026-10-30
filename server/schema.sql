@@ -1,5 +1,10 @@
 PRAGMA foreign_keys = ON;
 
+CREATE TABLE IF NOT EXISTS app_migrations (
+  name TEXT PRIMARY KEY,
+  applied_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
@@ -21,7 +26,7 @@ CREATE TABLE IF NOT EXISTS settings (
   timezone TEXT NOT NULL DEFAULT 'Africa/Lagos',
   work_start TEXT NOT NULL DEFAULT '08:00',
   work_end TEXT NOT NULL DEFAULT '17:00',
-  theme TEXT NOT NULL DEFAULT 'system',
+  theme TEXT NOT NULL DEFAULT 'light',
   platforms TEXT NOT NULL DEFAULT 'Instagram,LinkedIn,YouTube,WhatsApp',
   notifications_enabled INTEGER NOT NULL DEFAULT 1,
   auto_plan INTEGER NOT NULL DEFAULT 1,

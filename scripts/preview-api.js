@@ -52,15 +52,26 @@
     try {
       const value = JSON.parse(stored || "null");
       if (value && value.data && Array.isArray(value.generatedDays)) {
-        // Earlier demos seeded dark by default. Update only untouched settings;
-        // preserve every record and any appearance an owner has saved.
-        const settings = value.data.settings;
-        if (
-          settings?.theme === "dark" &&
-          settings.created_at &&
-          settings.created_at === settings.updated_at
-        )
-          settings.theme = "system";
+        // Migrate old automatic defaults once. Explicit Light/Dark choices and
+        // all demo records are kept; a later System selection stays selected.
+        if (!value.whiteFirstAppearance) {
+          const settings = value.data.settings;
+          if (
+            settings?.theme === "system" ||
+            (settings?.theme === "dark" &&
+              settings.created_at &&
+              settings.created_at === settings.updated_at)
+          )
+            settings.theme = "light";
+          if (value.team?.memberTheme === "system")
+            value.team.memberTheme = "light";
+          value.whiteFirstAppearance = true;
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(value));
+          } catch {
+            warnAboutStorage();
+          }
+        }
         return value;
       }
     } catch {
@@ -74,7 +85,12 @@
       task.due_date = today;
       task.cycle_id = cycle?.id || null;
     });
-    return { data, generatedDays: [today], signedOut: false };
+    return {
+      data,
+      generatedDays: [today],
+      signedOut: false,
+      whiteFirstAppearance: true,
+    };
   }
   let state = load();
   // Browser-only team simulation. Sample people are clearly labelled and no
@@ -85,7 +101,7 @@
       state.team = {
         workspace: { id: "demo-team", name: "Team Workspace" },
         viewer: "owner",
-        memberTheme: "system",
+        memberTheme: "light",
         members: [
           {
             user_id: state.data.settings.user_id,

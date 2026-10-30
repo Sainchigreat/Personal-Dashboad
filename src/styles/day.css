@@ -78,7 +78,7 @@
   justify-content: space-between;
   gap: 15px;
   padding: 21px;
-  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  background: var(--mint-soft);
   border-color: var(--border-light);
 }
 .day-progress-card h2 {
@@ -171,14 +171,14 @@
   background: var(--accent);
 }
 .category-dot.highlight {
-  background: var(--accent);
+  background: var(--peach);
 }
 .category-dot.secondary {
-  background: var(--accent);
+  background: var(--lavender);
 }
 .day-task.is-done .day-task-main strong {
   text-decoration: line-through;
-  opacity: 0.6;
+  color: var(--muted);
 }
 .task-actions {
   display: flex;

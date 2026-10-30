@@ -6,14 +6,14 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 
 describe("legacy theme migration", () => {
-  it("changes only untouched dark defaults and keeps existing records", () => {
+  it("migrates old defaults once and retains explicit choices and records", () => {
     const directory = mkdtempSync(join(tmpdir(), "momentum-theme-migration-"));
     try {
       const file = join(directory, "momentum.sqlite");
       const database = new DatabaseSync(file);
       database.exec(
         readFileSync("server/schema.sql", "utf8").replace(
-          "theme TEXT NOT NULL DEFAULT 'system'",
+          "theme TEXT NOT NULL DEFAULT 'light'",
           "theme TEXT NOT NULL DEFAULT 'dark'",
         ),
       );
@@ -27,6 +27,7 @@ describe("legacy theme migration", () => {
         ["untouched", "dark", "one"],
         ["saved-dark", "dark", "two"],
         ["saved-light", "light", "two"],
+        ["prior-auto", "system", "two"],
       ]) {
         user.run(id, `${id}@example.com`, "hash", "one");
         settings.run(`settings-${id}`, id, theme, "one", modified);
@@ -55,14 +56,39 @@ describe("legacy theme migration", () => {
           .prepare("SELECT user_id, theme FROM settings ORDER BY user_id")
           .all(),
       ).toEqual([
+        expect.objectContaining({ user_id: "prior-auto", theme: "light" }),
         expect.objectContaining({ user_id: "saved-dark", theme: "dark" }),
         expect.objectContaining({ user_id: "saved-light", theme: "light" }),
-        expect.objectContaining({ user_id: "untouched", theme: "system" }),
+        expect.objectContaining({ user_id: "untouched", theme: "light" }),
       ]);
       expect(migrated.prepare("SELECT title FROM tasks").get()?.title).toBe(
         "A task to keep",
       );
+      // Explicitly opting back into System after migration survives a restart.
+      migrated
+        .prepare(
+          "UPDATE settings SET theme='system' WHERE user_id='prior-auto'",
+        )
+        .run();
       migrated.close();
+      execFileSync(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          "--input-type=module",
+          "-e",
+          'await import("./server/db.ts")',
+        ],
+        { cwd: process.cwd(), env: { ...process.env, DATA_DIR: directory } },
+      );
+      const reopened = new DatabaseSync(file);
+      expect(
+        reopened
+          .prepare("SELECT theme FROM settings WHERE user_id='prior-auto'")
+          .get()?.theme,
+      ).toBe("system");
+      reopened.close();
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

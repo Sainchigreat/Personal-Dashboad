@@ -1,11 +1,11 @@
 /* Next Chapter */
 .chapter-banner {
   min-height: 170px;
-  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  background: var(--lavender-soft);
   border-color: var(--border-light);
 }
 .chapter-banner .banner-kicker {
-  color: var(--accent);
+  color: var(--lavender);
 }
 .chapter-banner .banner-kicker span {
   background: var(--accent);
@@ -14,7 +14,7 @@
   line-height: 1.25;
 }
 .chapter-banner h2 span {
-  color: var(--accent);
+  color: var(--lavender);
 }
 .chapter-banner p {
   color: var(--muted);
@@ -82,8 +82,8 @@
   background: #9bffd51b;
 }
 .chapter-stat-icon.secondary {
-  color: var(--accent);
-  background: #b1efd51b;
+  color: var(--lavender);
+  background: var(--lavender-soft);
 }
 .chapter-stat-icon.green {
   color: var(--accent);

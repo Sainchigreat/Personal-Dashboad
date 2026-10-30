@@ -16,7 +16,7 @@ function makeDemo(storage = new Map<string, string>()) {
     daily_templates: "[]",
     work_start: "08:00",
     work_end: "17:00",
-    theme: "system",
+    theme: "light",
     created_at: "2026-10-01T00:00:00.000Z",
     updated_at: "2026-10-01T00:00:00.000Z",
   };
@@ -76,24 +76,61 @@ describe("browser-only preview adapter", () => {
     const key = "momentum-os-browser-demo-v1";
     const previous = JSON.parse(demo.storage.get(key)!);
     previous.data.settings.theme = "dark";
+    delete previous.whiteFirstAppearance;
     demo.storage.set(key, JSON.stringify(previous));
     let reopened = makeDemo(demo.storage);
     let data = (await reopened.request("GET", "/bootstrap")).body;
-    expect(data.settings.theme).toBe("system");
+    expect(data.settings.theme).toBe("light");
     expect(data.tasks).toEqual([
       expect.objectContaining({ title: "Keep my task" }),
     ]);
     expect(
-      (await reopened.request("PATCH", "/settings", { theme: "light" })).status,
+      (await reopened.request("PATCH", "/settings", { theme: "system" }))
+        .status,
     ).toBe(200);
     reopened = makeDemo(demo.storage);
     data = (await reopened.request("GET", "/bootstrap")).body;
-    expect(data.settings.theme).toBe("light");
+    expect(data.settings.theme).toBe("system");
     expect(data.tasks).toHaveLength(1);
     expect(
       (await reopened.request("PATCH", "/settings", { theme: "invalid" }))
         .status,
     ).toBe(400);
+  });
+
+  it("switches old automatic appearances to light once while preserving explicit dark", async () => {
+    const demo = makeDemo();
+    await demo.request("POST", "/tasks", {
+      title: "Keep this record",
+      status: "todo",
+    });
+    await demo.request("GET", "/team/bootstrap");
+    const key = "momentum-os-browser-demo-v1";
+    const previous = JSON.parse(demo.storage.get(key)!);
+    delete previous.whiteFirstAppearance;
+    previous.data.settings.theme = "system";
+    previous.team.memberTheme = "system";
+    demo.storage.set(key, JSON.stringify(previous));
+    let reopened = makeDemo(demo.storage);
+    expect(
+      (await reopened.request("GET", "/bootstrap")).body.settings.theme,
+    ).toBe("light");
+    expect(JSON.parse(demo.storage.get(key)!).team.memberTheme).toBe("light");
+    expect(
+      (await reopened.request("GET", "/bootstrap")).body.tasks,
+    ).toHaveLength(1);
+
+    const explicit = JSON.parse(demo.storage.get(key)!);
+    delete explicit.whiteFirstAppearance;
+    explicit.data.settings.theme = "dark";
+    explicit.data.settings.updated_at = "2026-10-02T00:00:00.000Z";
+    explicit.team.memberTheme = "dark";
+    demo.storage.set(key, JSON.stringify(explicit));
+    reopened = makeDemo(demo.storage);
+    expect(
+      (await reopened.request("GET", "/bootstrap")).body.settings.theme,
+    ).toBe("dark");
+    expect(JSON.parse(demo.storage.get(key)!).team.memberTheme).toBe("dark");
   });
 
   it("does not count invalid paid sales or publish unapproved AI content", async () => {

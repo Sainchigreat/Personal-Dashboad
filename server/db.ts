@@ -59,16 +59,34 @@ if (!settingsColumns.includes("notifications_enabled"))
   db.exec(
     "ALTER TABLE settings ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 1",
   );
-// Earlier versions seeded dark as the default. Follow the device for untouched
-// defaults, while keeping light/dark preferences that an owner has saved.
+// The white-first redesign changes previous automatic defaults once, without
+// touching workspace records or explicit Light/Dark choices. A migration marker
+// means a user can opt back into System later without it being reset on restart.
 const themeColumn = db
   .prepare("PRAGMA table_info(settings)")
   .all()
   .find((column) => column.name === "theme");
-if (themeColumn?.dflt_value === "'dark'")
-  db.prepare(
-    "UPDATE settings SET theme='system' WHERE theme='dark' AND updated_at=created_at",
-  ).run();
+db.exec("BEGIN IMMEDIATE");
+try {
+  const migration = "white-first-appearance-v1";
+  if (
+    !db.prepare("SELECT name FROM app_migrations WHERE name=?").get(migration)
+  ) {
+    db.prepare("UPDATE settings SET theme='light' WHERE theme='system'").run();
+    if (themeColumn?.dflt_value === "'dark'")
+      db.prepare(
+        "UPDATE settings SET theme='light' WHERE theme='dark' AND updated_at=created_at",
+      ).run();
+    db.prepare("INSERT INTO app_migrations(name,applied_at) VALUES (?,?)").run(
+      migration,
+      new Date().toISOString(),
+    );
+  }
+  db.exec("COMMIT");
+} catch (error) {
+  db.exec("ROLLBACK");
+  throw error;
+}
 
 export const id = () => randomUUID();
 export const now = () => new Date().toISOString();
@@ -146,7 +164,7 @@ export function createWorkspace(
       "Africa/Lagos",
       "08:00",
       "17:00",
-      "system",
+      "light",
       1,
       JSON.stringify(defaultTemplates),
       stamp,

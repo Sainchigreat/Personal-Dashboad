@@ -19,6 +19,17 @@ export function dayTasks(data: Data, day: string) {
         a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at),
     );
 }
+/** Current stage distribution across the user's real creative projects. */
+export function projectOverview(projects: Data["projects"]) {
+  const active = projects.filter((project) => project.stage !== "Completed");
+  const total = projects.length;
+  return {
+    active,
+    total,
+    completed: total - active.length,
+    activePercent: total ? (active.length / total) * 100 : 0,
+  };
+}
 export function cycleMetrics(data: Data, cycle: Cycle, today: string) {
   const paid = data.sales.filter(
     (sale) => sale.cycle_id === cycle.id && sale.status === "paid",

@@ -252,8 +252,8 @@ export default function Settings() {
                         })
                       }
                     >
+                      <option value="light">Light (default)</option>
                       <option value="system">Use device setting</option>
-                      <option value="light">Light</option>
                       <option value="dark">Dark</option>
                     </select>
                     <small>

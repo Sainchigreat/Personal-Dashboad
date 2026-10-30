@@ -359,6 +359,7 @@ export default function TeamWorkspace({ auth }: { auth: AuthStatus }) {
             />
             <MetricCard
               icon={CheckSquare2}
+              iconTone="secondary"
               label="My open assignments"
               value={openMine}
               detail="Assigned to you"
@@ -366,6 +367,7 @@ export default function TeamWorkspace({ auth }: { auth: AuthStatus }) {
             {manager && (
               <MetricCard
                 icon={Flag}
+                iconTone="highlight"
                 label="Awaiting my review"
                 value={toReview}
                 detail="Submitted work to review"
