@@ -257,3 +257,10 @@ export function createTeamOwnerWorkspace(userId: string) {
     db.exec("COMMIT");
   } catch (error) { db.exec("ROLLBACK"); throw error; }
 }
+
+const firstAccount = db.prepare("SELECT id FROM users ORDER BY created_at LIMIT 1").get() as {id:string}|undefined;
+if (firstAccount && !db.prepare("SELECT 1 FROM team_workspaces LIMIT 1").get()) {
+  const stamp = now(), workspaceId = id();
+  db.prepare("INSERT INTO team_workspaces(id,owner_user_id,name,created_at,updated_at) VALUES (?,?,?,?,?)").run(workspaceId,firstAccount.id,"Team Workspace",stamp,stamp);
+  db.prepare("INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,'owner','active',?)").run(id(),workspaceId,firstAccount.id,stamp);
+}
