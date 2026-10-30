@@ -143,6 +143,8 @@ if (
     bcrypt.hashSync(randomToken(), 10),
     "Chisom Ogbonna",
   );
+  const previewUser = db.prepare("SELECT id FROM users WHERE email=?").get("preview@momentum.local") as {id:string};
+  createTeamOwnerWorkspace(previewUser.id);
 }
 
 app.get("/api/auth/status", (req, res) => {
