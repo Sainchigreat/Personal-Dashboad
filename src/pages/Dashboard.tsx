@@ -315,6 +315,48 @@ export default function Dashboard() {
         />
       </section>
 
+      <section className="panel goal-engine-panel">
+        <div className="section-heading">
+          <div>
+            <span className="overline">GOAL ENGINE</span>
+            <h2>Your targets, translated into execution</h2>
+            <p className="muted">The monthly cycle sets the destination. Daily plans and weekly routines move it forward.</p>
+          </div>
+          <button className="plain-action" onClick={() => openForm("cycle", asRecord(cycle))}>Edit monthly goals <ArrowUpRight size={14} /></button>
+        </div>
+        <div className="goal-engine-grid">
+          <div className="goal-engine-item">
+            <div className="row-between"><strong>Course sales</strong><b>{metrics.sales} / {cycle.sales_target}</b></div>
+            <div className="progress"><span style={{width: `${percentage(metrics.sales, cycle.sales_target)}%`}} /></div>
+            <small>{Math.max(0, cycle.sales_target - metrics.sales)} sales remaining · weekly pace about {Math.ceil(cycle.sales_target / 4.35)}</small>
+          </div>
+          <div className="goal-engine-item">
+            <div className="row-between"><strong>Revenue</strong><b>{currency(metrics.revenue)} / {currency(cycle.revenue_target)}</b></div>
+            <div className="progress"><span style={{width: `${percentage(metrics.revenue, cycle.revenue_target)}%`}} /></div>
+            <small>{currency(Math.max(0, cycle.revenue_target - metrics.revenue))} remaining</small>
+          </div>
+          <div className="goal-engine-item">
+            <div className="row-between"><strong>Client outreach</strong><b>{cycle.outreach_target} actions / day</b></div>
+            <div className="progress"><span style={{width: `${percentage(metrics.outreach, cycle.outreach_target)}%`}} /></div>
+            <small>{metrics.outreach} logged today · target {cycle.outreach_target}</small>
+          </div>
+          <div className="goal-engine-item">
+            <div className="row-between"><strong>Creative production</strong><b>{cycle.projects_target} projects / week</b></div>
+            <div className="progress"><span style={{width: `${percentage(metrics.projectsDone, cycle.projects_target)}%`}} /></div>
+            <small>{metrics.projectsDone} completed this week</small>
+          </div>
+          <div className="goal-engine-item">
+            <div className="row-between"><strong>Next Chapter editorial</strong><b>{cycle.chapter_content_target} pieces / week</b></div>
+            <div className="progress"><span style={{width: `${percentage(data.content_items.filter(item => item.cycle_id === cycle.id && ["Published","Distributed","Approved","Scheduled"].includes(item.status) && item.planned_date && item.planned_date >= today.slice(0, 8) + "01").length, cycle.chapter_content_target)}%`}} /></div>
+            <small>Track the two weekly editorial pieces in your content library</small>
+          </div>
+          <div className="goal-engine-item">
+            <div className="row-between"><strong>Friday live session</strong><b>{weekdayNames[cycle.session_day]}</b></div>
+            <small>Plan the session, confirm the guest seven days ahead, and prepare promotion and delivery.</small>
+          </div>
+        </div>
+      </section>
+
       <div className="dashboard-columns">
         <section className="panel priority-panel">
           <SectionHeading
