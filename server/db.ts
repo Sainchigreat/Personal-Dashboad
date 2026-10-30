@@ -43,6 +43,16 @@ const defaultTemplates = [
   { title: "Capture one useful idea or lesson for your personal brand", category: "Personal Brand", priority: "medium", estimated_minutes: 15 },
   { title: "Record today's wins, blockers and tomorrow's first action", category: "Personal", priority: "low", estimated_minutes: 10 },
 ];
+const legacyDefaultTemplates = [
+  { title: "Follow up on course enquiries", category: "Course Growth", priority: "high", estimated_minutes: 20 },
+  { title: "Reach out to potential clients", category: "Client Pipeline", priority: "high", estimated_minutes: 60 },
+  { title: "Make progress on a creative project", category: "Creative Studio", priority: "high", estimated_minutes: 60 },
+  { title: "Share useful work on WhatsApp", category: "Course Growth", priority: "medium", estimated_minutes: 15 },
+  { title: "Capture a content idea", category: "Personal Brand", priority: "medium", estimated_minutes: 10 },
+  { title: "Plan tomorrow’s top three outcomes", category: "Personal", priority: "low", estimated_minutes: 10 },
+];
+db.prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE daily_templates=?")
+  .run(JSON.stringify(defaultTemplates), now(), JSON.stringify(legacyDefaultTemplates));
 
 export function createWorkspace(userId: string, email: string, passwordHash: string, name: string) {
   const stamp = now();
