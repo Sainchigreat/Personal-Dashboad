@@ -1,18 +1,48 @@
-export default function TeamWorkspace() {
-  return (
-    <section className="team-workspace-page" aria-label="Team Workspace">
-      <iframe
-        title="Momentum OS Team Workspace"
-        src="/team-workspace-preview.html"
-        style={{
-          display: "block",
-          width: "100%",
-          minHeight: "calc(100vh - 112px)",
-          border: 0,
-          borderRadius: 16,
-          background: "#090e19",
-        }}
-      />
-    </section>
-  );
+import { useCallback, useEffect, useState } from "react";
+import { api } from "../lib/api";
+import { Button, Card, Modal } from "../components/UI";
+
+type Goal={id:string;title:string;description:string;target:number;current:number;unit:string;due_date:string|null;owner_user_id:string|null};
+type Task={id:string;title:string;description:string;assignee_user_id:string;assignee_email:string;goal_id:string|null;goal_title:string|null;priority:string;status:string;due_date:string|null;deliverable:string;feedback:string};
+type Member={user_id:string;role:string;status:string;email:string;name:string};
+type Feed={id:string;action:string;summary:string;created_at:string;name:string|null;email:string};
+type State={workspace:{name:string};membership:{role:string};goals:Goal[];tasks:Task[];members:Member[];activity:Feed[];comments:Array<{id:string;task_id:string;user_id:string;body:string;created_at:string}>};
+const label=(s:string)=>s.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
+export default function TeamWorkspace(){
+ const [data,setData]=useState<State|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[dialog,setDialog]=useState<"task"|"goal"|"invite"|null>(null),[selected,setSelected]=useState<Task|null>(null),[notice,setNotice]=useState("");
+ const refresh=useCallback(async()=>{try{setError("");setData(await api<State>("/team/bootstrap"));}catch(e){setError(e instanceof Error?e.message:"Unable to load Team Workspace.");}},[]);
+ useEffect(()=>{void refresh();},[refresh]);
+ const send=async(path:string,body:unknown)=>{setBusy(true);setError("");try{await api(path,{method:"POST",body});setDialog(null);setNotice("Saved successfully.");await refresh();}catch(e){setError(e instanceof Error?e.message:"Unable to save.");}finally{setBusy(false);}};
+ const status=async(t:Task,next:string,feedback="")=>{setBusy(true);setError("");try{await api("/team/tasks/"+t.id+"/status",{method:"PATCH",body:{status:next,feedback}});setSelected(null);await refresh();}catch(e){setError(e instanceof Error?e.message:"Unable to update task.");}finally{setBusy(false);}};
+ if(error&&!data)return <div className="page"><h1>Team Workspace</h1><p className="muted">{error}</p><Button onClick={refresh}>Try again</Button></div>;
+ if(!data)return <div className="page"><p>Loading Team Workspace…</p></div>;
+ const manager=["owner","manager"].includes(data.membership.role),me=data.membership.role;
+ const count=(s:string)=>data.tasks.filter(t=>t.status===s).length;
+ const open=(s:string)=>data.tasks.filter(t=>t.status===s);
+ return <div className="page">
+  <div className="page-heading"><div><div className="eyebrow">SHARED OPERATIONS</div><h1>Team Workspace</h1><p className="muted">Shared goals, assigned work and transparent progress.</p></div><div className="page-actions">{manager&&<Button variant="secondary" onClick={()=>setDialog("invite")}>Invite member</Button>}{manager&&<Button onClick={()=>setDialog("task")}>＋ Assign task</Button>}</div></div>
+  {error&&<div className="form-error" role="alert">{error}</div>}{notice&&<p className="muted" role="status">{notice}</p>}
+  <div className="grid stats-grid">
+   <Card><span className="muted">Active goals</span><h2>{data.goals.length}</h2></Card>
+   <Card><span className="muted">In progress</span><h2>{count("in_progress")}</h2></Card>
+   <Card><span className="muted">Awaiting review</span><h2>{count("submitted")}</h2></Card>
+   <Card><span className="muted">Completed / approved</span><h2>{count("approved")+count("completed")}</h2></Card>
+  </div>
+  <div className="grid two-column">
+   <Card><div className="section-heading"><h2>Team goals</h2>{manager&&<Button variant="secondary" onClick={()=>setDialog("goal")}>＋ New goal</Button>}</div>
+    {data.goals.length===0?<p className="muted">No shared goals yet. Create the first team goal.</p>:data.goals.map(g=><div className="team-goal" key={g.id}><div className="row-between"><b>{g.title}</b><b>{Math.round(g.current/Math.max(1,g.target)*100)}%</b></div><p className="muted">{g.description}</p><div className="progress"><span style={{width:Math.min(100,g.current/Math.max(1,g.target)*100)+"%"}}/></div><small>{g.current} / {g.target} {g.unit}{g.due_date?" · Due "+g.due_date:""}</small></div>)}
+   </Card>
+   <Card><h2>Team members</h2>{data.members.map(m=><div className="team-member" key={m.user_id}><span className="avatar">{(m.name||m.email).slice(0,1).toUpperCase()}</span><span><b>{m.name||m.email}</b><small>{m.email}</small></span><span className="role-chip">{label(m.role)}</span></div>)}</Card>
+  </div>
+  <Card><div className="section-heading"><h2>{me==="member"?"My assigned tasks":"Team tasks"}</h2><span className="muted">{data.tasks.length} visible</span></div>
+   {data.tasks.length===0?<p className="muted">No tasks assigned yet.</p>:data.tasks.map(t=><div className="team-task" key={t.id}><div className="task-main"><b>{t.title}</b><small>{t.goal_title||"No linked goal"} · {t.due_date||"No due date"} · {label(t.priority)} priority</small><small>Assigned to {t.assignee_email}</small>{t.deliverable&&<small>Deliverable: {t.deliverable}</small>}{t.feedback&&<small className="feedback">Review feedback: {t.feedback}</small>}</div><span className={"status-chip "+t.status}>{label(t.status)}</span><div className="task-actions">{me==="member"&&t.assignee_user_id===data.membership.user_id&&<>{t.status==="assigned"&&<Button variant="secondary" disabled={busy} onClick={()=>status(t,"in_progress")}>Start</Button>}{["in_progress","revision_requested"].includes(t.status)&&<Button disabled={busy} onClick={()=>status(t,"submitted")}>Submit</Button>}</>}{manager&&t.status==="submitted"&&<><Button variant="secondary" disabled={busy} onClick={()=>{setSelected(t);}}>Review</Button><Button disabled={busy} onClick={()=>status(t,"approved")}>Approve</Button></>}</div></div>)}
+  </Card>
+  <div className="grid two-column"><Card><h2>Scoreboard</h2><p className="muted">Based on assigned workload and recorded delivery, not logins.</p>{data.members.map(m=>{const ts=data.tasks.filter(t=>t.assignee_user_id===m.user_id);const done=ts.filter(t=>["approved","completed"].includes(t.status)).length;return <div className="score-row" key={m.user_id}><span>{m.name||m.email}</span><b>{done} approved</b><small>{ts.length} assigned</small></div>})}</Card><Card><h2>Recent activity</h2>{data.activity.slice(0,8).map(a=><div className="activity-row" key={a.id}><b>{a.name||a.email}</b><span>{a.summary}</span><small>{new Date(a.created_at).toLocaleString()}</small></div>)}</Card></div>
+  {dialog&&<div className="modal-overlay"><div className="modal-card"><div className="row-between"><h2>{dialog==="task"?"Assign a task":dialog==="goal"?"Create a team goal":"Invite a team member"}</h2><button onClick={()=>setDialog(null)}>×</button></div>
+   {dialog==="task"&&<form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void send("/team/tasks",{title:f.get("title"),description:f.get("description"),assignee_user_id:f.get("assignee"),goal_id:f.get("goal")||null,priority:f.get("priority"),due_date:f.get("due")||null,deliverable:f.get("deliverable")});}}><label>Task title<input name="title" required maxLength={200}/></label><label>Description<textarea name="description"/></label><label>Assignee<select name="assignee" required>{data.members.filter(m=>m.status==="active").map(m=><option value={m.user_id} key={m.user_id}>{m.name||m.email} · {m.role}</option>)}</select></label><label>Linked goal<select name="goal"><option value="">No linked goal</option>{data.goals.map(g=><option key={g.id} value={g.id}>{g.title}</option>)}</select></label><label>Priority<select name="priority"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label><label>Due date<input name="due" type="date"/></label><label>Expected deliverable<input name="deliverable"/></label><Button type="submit" disabled={busy}>Create assignment</Button></form>}
+   {dialog==="goal"&&<form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void send("/team/goals",{title:f.get("title"),description:f.get("description"),target:Number(f.get("target")),current:0,unit:f.get("unit"),due_date:f.get("due")||null,owner_user_id:f.get("owner")||null});}}><label>Goal title<input name="title" required/></label><label>Description<textarea name="description"/></label><label>Target<input name="target" type="number" min="1" required/></label><label>Unit<input name="unit" defaultValue="deliverables"/></label><label>Owner<select name="owner"><option value="">Unassigned</option>{data.members.map(m=><option key={m.user_id} value={m.user_id}>{m.name||m.email}</option>)}</select></label><label>Due date<input name="due" type="date"/></label><Button type="submit" disabled={busy}>Create goal</Button></form>}
+   {dialog==="invite"&&<form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void (async()=>{setBusy(true);try{const r=await api<{join_path:string;email:string;role:string}>("/team/invites",{method:"POST",body:{email:f.get("email"),role:f.get("role")}});await navigator.clipboard.writeText(location.origin+r.join_path);setNotice("Invitation link copied. Send it to "+r.email+".");setDialog(null);await refresh();}catch(e){setError(e instanceof Error?e.message:"Unable to create invitation.");}finally{setBusy(false);}})();}}><label>Email address<input name="email" type="email" required/></label><label>Role<select name="role"><option value="member">Member</option><option value="manager">Manager</option></select></label><p className="muted">Creates a single-use invitation link valid for 7 days. The link is copied for you to send; this app does not send email yet.</p><Button type="submit" disabled={busy}>Create invitation link</Button></form>}
+  </div></div>}
+  {selected&&<div className="modal-overlay"><div className="modal-card"><h2>Review submission</h2><p>{selected.title}</p><label>Feedback<textarea id="review-feedback" defaultValue={selected.feedback}/></label><div className="row-between"><Button variant="secondary" onClick={()=>setSelected(null)}>Cancel</Button><Button onClick={()=>status(selected,"revision_requested",(document.getElementById("review-feedback") as HTMLTextAreaElement).value)}>Request revision</Button></div></div></div>}
+ </div>;
 }
