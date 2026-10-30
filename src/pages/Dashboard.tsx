@@ -34,6 +34,7 @@ import {
   EmptyState,
   MetricCard,
   Pill,
+  Progress,
   SectionHeading,
   TextLink,
 } from "../components/UI";
