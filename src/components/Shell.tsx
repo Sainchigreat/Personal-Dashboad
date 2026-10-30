@@ -21,6 +21,7 @@ import {
   Settings2,
   Sparkles,
   X,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import type { FormName, Page } from "../types";
