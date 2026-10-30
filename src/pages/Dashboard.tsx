@@ -50,7 +50,9 @@ export default function Dashboard() {
     );
     return () => window.clearInterval(timer);
   }, [data.settings.timezone]);
-  const metrics = cycleMetrics(data, cycle, today);\n  const currentWeekStart = (() => { const date = new Date(`${today}T12:00:00.000Z`); date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); return date.toISOString().slice(0, 10); })();\n  const currentWeekEnd = (() => { const date = new Date(`${currentWeekStart}T12:00:00.000Z`); date.setUTCDate(date.getUTCDate() + 6); return date.toISOString().slice(0, 10); })();
+  const metrics = cycleMetrics(data, cycle, today);
+  const currentWeekStart = (() => { const date = new Date(`${today}T12:00:00.000Z`); date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7)); return date.toISOString().slice(0, 10); })();
+  const currentWeekEnd = (() => { const date = new Date(`${currentWeekStart}T12:00:00.000Z`); date.setUTCDate(date.getUTCDate() + 6); return date.toISOString().slice(0, 10); })();
   const dayPct = percentage(metrics.done, metrics.tasks.length);
   const firstName = data.settings.name.trim().split(/\s+/)[0] || "there";
   const priorities = [...metrics.tasks]
