@@ -9,6 +9,7 @@ import {
 } from "react";
 import { api, setCsrf, setPreviewToken } from "./api";
 import { todayInZone } from "./date";
+import { browserStorage } from "./storage";
 import type {
   AuthStatus,
   Cycle,
@@ -91,7 +92,7 @@ export function AppProvider({
   const [auth, setAuth] = useState<AuthStatus | null>(null);
   const [data, setData] = useState<Data | null>(null);
   const [selectedId, setSelectedId] = useState(
-    () => localStorage.getItem("momentum-cycle") || "",
+    () => browserStorage.get("momentum-cycle") || "",
   );
   const [page, setPageState] = useState<Page>(pageFromHash);
   const [form, setForm] = useState<FormState | null>(null);
@@ -110,7 +111,7 @@ export function AppProvider({
     if (
       !status.authenticated &&
       status.previewEnabled &&
-      localStorage.getItem("momentum-preview-signed-out") !== "1"
+      browserStorage.get("momentum-preview-signed-out") !== "1"
     ) {
       const result = await api<{ csrfToken: string; previewToken: string }>(
         "/auth/preview",
@@ -154,7 +155,7 @@ export function AppProvider({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
   const selectCycle = useCallback((value: string) => {
-    localStorage.setItem("momentum-cycle", value);
+    browserStorage.set("momentum-cycle", value);
     setSelectedId(value);
   }, []);
   const toast = useCallback(
@@ -228,7 +229,7 @@ export function AppProvider({
     await api("/auth/logout", { method: "POST" });
     setCsrf(null);
     setPreviewToken(null);
-    localStorage.setItem("momentum-preview-signed-out", "1");
+    browserStorage.set("momentum-preview-signed-out", "1");
     setData(null);
     await checkAuth();
   }, [checkAuth]);

@@ -28,13 +28,33 @@
       return new Date().toISOString().slice(0, 10);
     }
   };
+  function warnAboutStorage() {
+    if (typeof document === "undefined") return;
+    const showWarning = () => {
+      const message = document.querySelector("#demo-notice span");
+      if (message)
+        message.textContent =
+          "Browser storage is blocked. Changes will be lost when you refresh.";
+    };
+    if (document.readyState === "loading")
+      document.addEventListener("DOMContentLoaded", showWarning, {
+        once: true,
+      });
+    else showWarning();
+  }
   function load() {
+    let stored = null;
     try {
-      const value = JSON.parse(localStorage.getItem(storageKey) || "null");
+      stored = localStorage.getItem(storageKey);
+    } catch {
+      warnAboutStorage();
+    }
+    try {
+      const value = JSON.parse(stored || "null");
       if (value && value.data && Array.isArray(value.generatedDays))
         return value;
     } catch {
-      /* Use a clean demo if storage is unavailable or invalid. */
+      /* Use a clean demo if stored data is invalid. */
     }
     const data = copy(initial);
     // A preview built on a different date should still show today's planned tasks.
@@ -51,7 +71,8 @@
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
     } catch {
-      /* The preview continues in memory. */
+      // Continue in memory but make the loss of persistence visible.
+      warnAboutStorage();
     }
   }
   function fail(message, status = 400) {

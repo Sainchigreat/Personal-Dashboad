@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { api, setCsrf, setPreviewToken } from "../lib/api";
+import { browserStorage } from "../lib/storage";
 import type { AuthStatus } from "../types";
 import { Logo } from "../components/UI";
 
@@ -46,7 +47,7 @@ export default function Auth({
       );
       setCsrf(result.csrfToken);
       setPreviewToken(result.previewToken);
-      localStorage.removeItem("momentum-preview-signed-out");
+      browserStorage.remove("momentum-preview-signed-out");
       await onAuthenticated();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to open preview.");

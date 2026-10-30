@@ -104,8 +104,8 @@ let html = builtHtml
   )
   .replace(cssMatch[0], () => `<style>${css}\n${bannerStyles}</style>`)
   .replace(
-    '<div id="root"></div>',
-    `<div id="root"></div>\n<div id="demo-notice" role="status"><strong>Preview only</strong><span>Changes stay in this browser and are not synced or private.</span><button type="button" aria-label="Dismiss preview notice" onclick="this.parentElement.remove()">×</button></div>`,
+    "</body>",
+    `<div id="demo-notice" role="status"><strong>Preview only</strong><span>Changes stay in this browser and are not synced or private.</span><button type="button" aria-label="Dismiss preview notice" onclick="this.parentElement.remove()">×</button></div>\n</body>`,
   );
 mkdirSync(resolve(root, "preview-dist"), { recursive: true });
 writeFileSync(resolve(root, "preview-dist/index.html"), html);
