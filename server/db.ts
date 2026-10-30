@@ -20,6 +20,33 @@ db.exec(
 );
 db.exec(readFileSync(resolve(here, "schema.sql"), "utf8"));
 // Additive migrations for workspaces created by an earlier version.
+const userColumns = db
+  .prepare("PRAGMA table_info(users)")
+  .all()
+  .map((column) => String(column.name));
+if (!userColumns.includes("account_type"))
+  db.exec(
+    "ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'owner'",
+  );
+// The earlier Team Workspace draft created invited users before account_type
+// existed. Classify every non-owner membership as team-only, including a
+// database that already received the column with its default value. Preserve
+// any legacy seeded personal rows, but do not expose personal APIs to them.
+db.prepare(
+  `UPDATE users SET account_type='team'
+  WHERE account_type!='team' AND EXISTS (
+    SELECT 1 FROM team_members m JOIN team_workspaces w ON w.id=m.workspace_id
+    WHERE m.user_id=users.id AND w.owner_user_id!=users.id
+  )`,
+).run();
+const teamTaskColumns = db
+  .prepare("PRAGMA table_info(team_tasks)")
+  .all()
+  .map((column) => String(column.name));
+if (!teamTaskColumns.includes("submission"))
+  db.exec(
+    "ALTER TABLE team_tasks ADD COLUMN submission TEXT NOT NULL DEFAULT ''",
+  );
 const settingsColumns = db
   .prepare("PRAGMA table_info(settings)")
   .all()
@@ -243,4 +270,19 @@ export function ensureDailyPlan(userId: string) {
     db.exec("ROLLBACK");
     throw error;
   }
+}
+
+/** Existing private workspaces get a shared team space without changing their data. */
+export function ensureTeamOwnerWorkspace(userId: string) {
+  const stamp = now();
+  db.prepare(
+    "INSERT OR IGNORE INTO team_workspaces(id,owner_user_id,name,created_at,updated_at) VALUES (?,?,?,?,?)",
+  ).run(id(), userId, "Team Workspace", stamp, stamp);
+  const workspace = db
+    .prepare("SELECT id FROM team_workspaces WHERE owner_user_id=?")
+    .get(userId) as { id: string };
+  db.prepare(
+    "INSERT OR IGNORE INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,'owner','active',?)",
+  ).run(id(), workspace.id, userId, stamp);
+  return workspace.id;
 }

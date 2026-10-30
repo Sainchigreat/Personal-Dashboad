@@ -7,6 +7,7 @@ export type Page =
   | "brand"
   | "pipeline"
   | "review"
+  | "team"
   | "settings";
 export type FormName =
   | "task"
@@ -237,6 +238,9 @@ export interface AuthStatus {
   previewEnabled: boolean;
   csrfToken: string | null;
   email: string | null;
+  accountType?: "owner" | "team" | null;
+  theme?: ThemePreference | null;
+  browserDemo?: boolean;
 }
 export interface FormState {
   name: FormName;

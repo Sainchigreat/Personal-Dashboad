@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  account_type TEXT NOT NULL DEFAULT 'owner' CHECK(account_type IN ('owner','team')),
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -272,3 +273,87 @@ CREATE INDEX IF NOT EXISTS idx_sales_user_cycle ON sales(user_id, cycle_id, stat
 CREATE INDEX IF NOT EXISTS idx_interactions_user_date ON interactions(user_id, occurred_date);
 CREATE INDEX IF NOT EXISTS idx_content_user_date ON content_items(user_id, planned_date);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_date ON chapter_sessions(user_id, session_date);
+
+-- Shared Team Workspace is deliberately separate from owner-only personal records.
+CREATE TABLE IF NOT EXISTS team_workspaces (
+  id TEXT PRIMARY KEY,
+  owner_user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT 'Team Workspace',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_members (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES team_workspaces(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK(role IN ('owner','manager','member')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','suspended')),
+  joined_at TEXT NOT NULL,
+  UNIQUE(workspace_id,user_id)
+);
+CREATE TABLE IF NOT EXISTS team_invites (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES team_workspaces(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('manager','member')),
+  token_hash TEXT NOT NULL UNIQUE,
+  invited_by TEXT NOT NULL REFERENCES users(id),
+  expires_at INTEGER NOT NULL,
+  accepted_at TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_goals (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES team_workspaces(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  target REAL NOT NULL DEFAULT 1,
+  current REAL NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'deliverables',
+  due_date TEXT,
+  owner_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_by TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_tasks (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES team_workspaces(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  assignee_user_id TEXT NOT NULL REFERENCES users(id),
+  goal_id TEXT REFERENCES team_goals(id) ON DELETE SET NULL,
+  priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high')),
+  status TEXT NOT NULL DEFAULT 'assigned' CHECK(status IN ('assigned','in_progress','submitted','revision_requested','approved','completed')),
+  due_date TEXT,
+  deliverable TEXT NOT NULL DEFAULT '',
+  submission TEXT NOT NULL DEFAULT '',
+  reviewer_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  feedback TEXT NOT NULL DEFAULT '',
+  submitted_at TEXT,
+  reviewed_at TEXT,
+  created_by TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_comments (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES team_tasks(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_activity (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL REFERENCES team_workspaces(id) ON DELETE CASCADE,
+  actor_user_id TEXT NOT NULL REFERENCES users(id),
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_team_tasks_workspace_due ON team_tasks(workspace_id,due_date);
+CREATE INDEX IF NOT EXISTS idx_team_tasks_assignee ON team_tasks(assignee_user_id,status);
+CREATE INDEX IF NOT EXISTS idx_team_activity_workspace ON team_activity(workspace_id,created_at);
+CREATE INDEX IF NOT EXISTS idx_team_invites_email ON team_invites(email,expires_at);

@@ -1,3 +1,12 @@
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 let csrfToken: string | null = null;
 let previewToken: string | null = null;
 export function setPreviewToken(token: string | null) {
@@ -30,9 +39,10 @@ export async function api<T>(
     throw new Error("The server returned an unexpected response.");
   }
   if (!response.ok)
-    throw new Error(
+    throw new ApiError(
       (result as { error?: string })?.error ||
         "Unable to complete that request.",
+      response.status,
     );
   return result as T;
 }

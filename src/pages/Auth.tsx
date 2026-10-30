@@ -2,16 +2,21 @@ import { useState, type FormEvent } from "react";
 import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { api, setCsrf, setPreviewToken } from "../lib/api";
 import { browserStorage } from "../lib/storage";
+import { invitationToken } from "../lib/invite";
 import type { AuthStatus } from "../types";
 import { Logo } from "../components/UI";
 
 export default function Auth({
   status,
   onAuthenticated,
+  onSignOut,
 }: {
   status: AuthStatus;
   onAuthenticated: () => Promise<void>;
+  onSignOut: () => Promise<void>;
 }) {
+  const inviteToken = invitationToken();
+  const joining = Boolean(inviteToken);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -24,12 +29,14 @@ export default function Auth({
         email: String(fields.get("email")),
         password: String(fields.get("password")),
       };
-      if (status.needsSetup) body.name = String(fields.get("name"));
+      if (status.needsSetup || joining) body.name = String(fields.get("name"));
+      if (inviteToken) body.inviteToken = inviteToken;
       const result = await api<{ csrfToken: string }>(
-        status.needsSetup ? "/auth/register" : "/auth/login",
+        status.needsSetup || joining ? "/auth/register" : "/auth/login",
         { method: "POST", body },
       );
       setCsrf(result.csrfToken);
+      if (joining) history.replaceState(null, "", "/");
       await onAuthenticated();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to sign in.");
@@ -88,67 +95,109 @@ export default function Auth({
             <LockKeyhole size={20} />
           </div>
           <h2>
-            {status.needsSetup ? "Create your workspace" : "Welcome back"}
+            {joining
+              ? "Join your team"
+              : status.needsSetup
+                ? "Create your workspace"
+                : "Welcome back"}
           </h2>
           <p>
-            {status.needsSetup
-              ? "Set up a private owner account to get started."
-              : "Sign in to continue where you left off."}
+            {joining
+              ? status.authenticated
+                ? `You are signed in as ${status.email}. Sign out before accepting this invitation.`
+                : "Create your account using the email address the invitation was sent to."
+              : status.needsSetup
+                ? "Set up a private owner account to get started."
+                : "Sign in to continue where you left off."}
           </p>
-          <form onSubmit={submit} className="auth-form">
-            {status.needsSetup && (
+          {joining && status.authenticated ? (
+            <div className="auth-form">
+              {error && (
+                <div className="form-error" role="alert">
+                  {error}
+                </div>
+              )}
+              <button
+                className="button primary wide"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError("");
+                  try {
+                    await onSignOut();
+                  } catch (e) {
+                    setError(
+                      e instanceof Error ? e.message : "Unable to sign out.",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Sign out to join <ArrowRight size={16} />
+              </button>
+              <a href="/">Keep current account</a>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="auth-form">
+              {(status.needsSetup || joining) && (
+                <label>
+                  Name
+                  <input
+                    name="name"
+                    placeholder="Your name"
+                    required
+                    autoComplete="name"
+                  />
+                </label>
+              )}
               <label>
-                Name
+                Email address
                 <input
-                  name="name"
-                  placeholder="Your name"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
                   required
-                  autoComplete="name"
+                  autoComplete="email"
                 />
               </label>
-            )}
-            <label>
-              Email address
-              <input
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              Password
-              <input
-                name="password"
-                type="password"
-                minLength={status.needsSetup ? 12 : undefined}
-                placeholder={
-                  status.needsSetup
-                    ? "At least 12 characters"
-                    : "Enter your password"
-                }
-                required
-                autoComplete={
-                  status.needsSetup ? "new-password" : "current-password"
-                }
-              />
-            </label>
-            {error && (
-              <div className="form-error" role="alert">
-                {error}
-              </div>
-            )}
-            <button className="button primary wide" disabled={busy}>
-              {busy
-                ? "Please wait…"
-                : status.needsSetup
-                  ? "Create workspace"
-                  : "Sign in"}{" "}
-              <ArrowRight size={16} />
-            </button>
-          </form>
-          {status.previewEnabled && (
+              <label>
+                Password
+                <input
+                  name="password"
+                  type="password"
+                  minLength={status.needsSetup || joining ? 12 : undefined}
+                  placeholder={
+                    status.needsSetup || joining
+                      ? "At least 12 characters"
+                      : "Enter your password"
+                  }
+                  required
+                  autoComplete={
+                    status.needsSetup || joining
+                      ? "new-password"
+                      : "current-password"
+                  }
+                />
+              </label>
+              {error && (
+                <div className="form-error" role="alert">
+                  {error}
+                </div>
+              )}
+              <button className="button primary wide" disabled={busy}>
+                {busy
+                  ? "Please wait…"
+                  : joining
+                    ? "Create team account"
+                    : status.needsSetup
+                      ? "Create workspace"
+                      : "Sign in"}{" "}
+                <ArrowRight size={16} />
+              </button>
+            </form>
+          )}
+          {status.previewEnabled && !joining && (
             <>
               <div className="auth-divider">
                 <span>OR</span>

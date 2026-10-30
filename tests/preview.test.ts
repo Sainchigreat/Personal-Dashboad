@@ -62,8 +62,23 @@ describe("isolated preview mode", () => {
       csrfToken: string;
     };
     expect(session.previewToken).toBeTruthy();
+    // Successful users behind one shared IP do not consume the failure budget.
+    for (let i = 0; i < 15; i++)
+      expect(
+        (await fetch(`${base}/auth/preview`, { method: "POST" })).status,
+      ).toBe(200);
     const headers = { Authorization: `Bearer ${session.previewToken}` };
     expect((await fetch(`${base}/bootstrap`, { headers })).status).toBe(200);
+    const invitation = await fetch(`${base}/team/invites`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "X-CSRF-Token": session.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: "demo@example.com", role: "member" }),
+    });
+    expect(invitation.status).toBe(403);
     expect(
       (
         await fetch(`${base}/settings`, {
@@ -82,5 +97,22 @@ describe("isolated preview mode", () => {
       ).status,
     ).toBe(200);
     expect((await fetch(`${base}/bootstrap`, { headers })).status).toBe(401);
+    for (let i = 0; i < 12; i++) {
+      const failed = await fetch(`${base}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "invalid", password: "x" }),
+      });
+      expect(failed.status).toBe(400);
+    }
+    expect(
+      (
+        await fetch(`${base}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "invalid", password: "x" }),
+        })
+      ).status,
+    ).toBe(429);
   });
 });

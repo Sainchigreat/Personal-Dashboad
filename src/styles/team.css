@@ -1,0 +1,402 @@
+/* Shared work uses the same surfaces and typography as the personal workspace. */
+.team-page > .tabs {
+  margin: 23px 0 20px;
+}
+.team-privacy,
+.team-demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 15px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 11px;
+}
+.team-privacy svg {
+  color: var(--accent);
+  flex: none;
+}
+.team-privacy strong,
+.team-demo-banner strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.team-demo-banner {
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  border-color: var(--border-light);
+  background: var(--surface-2);
+}
+.team-demo-banner p {
+  margin-top: 3px;
+}
+.team-demo-banner .button {
+  flex: none;
+}
+.team-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.team-overview-grid,
+.team-people-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 15px;
+  align-items: start;
+}
+.team-panel {
+  padding: 20px;
+  min-width: 0;
+}
+.team-panel > .section-heading {
+  margin-bottom: 16px;
+}
+.team-loading {
+  padding: 22px;
+  color: var(--muted);
+}
+.team-loading .button {
+  margin-top: 12px;
+}
+.team-spaced,
+.team-activity-panel {
+  margin-top: 15px;
+}
+.team-goal-list {
+  display: grid;
+  gap: 10px;
+}
+.team-goal-card,
+.team-task-card {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.team-goal-top,
+.team-task-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.team-goal-top > div,
+.team-task-title > div {
+  min-width: 0;
+}
+.team-goal-top h3,
+.team-task-title h3 {
+  font:
+    600 13px/1.4 "Inter",
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.team-goal-top p,
+.team-task-title p,
+.team-task-description,
+.team-goal-meta {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.team-goal-progress {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.team-goal-progress strong {
+  color: var(--accent);
+}
+.team-goal-meta {
+  margin-top: 9px;
+}
+.team-summary-list > button,
+.team-invite-list > div {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  text-align: left;
+}
+.team-summary-list > button:last-child,
+.team-invite-list > div:last-child {
+  border-bottom: 0;
+}
+.team-summary-list > button:hover strong {
+  color: var(--accent);
+}
+.team-summary-list strong,
+.team-summary-list small,
+.team-invite-list strong,
+.team-invite-list small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.team-summary-list strong,
+.team-invite-list strong {
+  font-size: 11px;
+  font-weight: 600;
+}
+.team-summary-list small,
+.team-invite-list small {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.team-task-list {
+  display: grid;
+  gap: 10px;
+}
+.team-task-title .pill {
+  flex: none;
+  text-transform: capitalize;
+}
+.team-task-description,
+.team-task-detail,
+.team-task-feedback,
+.team-submission p,
+.team-comments p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.team-task-detail,
+.team-task-feedback {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.team-task-detail strong,
+.team-task-feedback strong {
+  color: var(--text);
+}
+.team-task-feedback {
+  padding: 10px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+}
+.team-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.team-task-actions .button {
+  min-height: 33px;
+}
+.team-day-section .team-task-card {
+  margin-bottom: 0;
+}
+.team-member-list {
+  display: grid;
+}
+.team-member-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.team-member-row:last-child {
+  border: 0;
+}
+.team-member-row .avatar {
+  flex: none;
+}
+.team-member-name {
+  flex: 1;
+  min-width: 0;
+}
+.team-member-name strong,
+.team-member-name small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.team-member-name strong {
+  font-size: 11px;
+}
+.team-member-name small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.team-member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.team-activity {
+  display: grid;
+  gap: 13px;
+}
+.team-activity > div {
+  display: flex;
+  gap: 11px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.team-activity strong {
+  color: var(--text);
+}
+.team-activity small {
+  display: block;
+  margin-top: 2px;
+  color: var(--subtle);
+  font-size: 10px;
+}
+.activity-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.team-dialog > label,
+.team-form-grid label,
+.team-settings > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.team-form-grid {
+  display: grid;
+  gap: 14px;
+}
+.form-grid.team-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.team-span-two {
+  grid-column: 1 / -1;
+}
+.team-form-grid small,
+.team-form-help {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.team-form-help {
+  margin: 12px 0;
+}
+.team-dialog > .team-form-help:first-child {
+  margin-top: 0;
+}
+.team-submission,
+.team-comments,
+.team-invite-success {
+  margin-bottom: 15px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 11px;
+}
+.team-submission p {
+  margin-top: 7px;
+}
+.team-comments {
+  display: grid;
+  gap: 12px;
+  max-height: 250px;
+  overflow: auto;
+}
+.team-comments small {
+  margin-left: 8px;
+  color: var(--subtle);
+}
+.team-comments p {
+  margin-top: 4px;
+  color: var(--muted);
+}
+.team-invite-success {
+  display: flex;
+  gap: 10px;
+}
+.team-invite-success svg {
+  flex: none;
+  color: var(--accent);
+}
+.team-invite-success p {
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+.team-notice {
+  color: var(--accent);
+  font-size: 11px;
+  margin: 10px 0;
+}
+.team-settings {
+  max-width: 650px;
+}
+.team-settings > label {
+  max-width: 310px;
+  margin-bottom: 15px;
+}
+.team-workspace-label {
+  cursor: default;
+}
+@media (max-width: 1000px) {
+  .team-overview-grid,
+  .team-people-layout {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .team-privacy,
+  .team-demo-banner {
+    align-items: flex-start;
+  }
+  .team-demo-banner {
+    flex-direction: column;
+  }
+  .team-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .team-panel {
+    padding: 16px;
+  }
+  .team-member-row {
+    flex-wrap: wrap;
+  }
+  .team-member-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    padding-left: 40px;
+  }
+}
+@media (max-width: 380px) {
+  .team-stats {
+    grid-template-columns: 1fr;
+  }
+  .team-task-title {
+    flex-wrap: wrap;
+  }
+  .form-grid.team-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .team-span-two {
+    grid-column: auto;
+  }
+}

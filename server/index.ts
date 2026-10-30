@@ -16,8 +16,10 @@ import {
   now,
   createWorkspace,
   ensureDailyPlan,
+  ensureTeamOwnerWorkspace,
   dateInZone,
 } from "./db";
+import teamRouter, { hashInvite } from "./team";
 import {
   configs,
   foreignKeys,
@@ -39,12 +41,21 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "1mb" }));
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
 
 const hash = (token: string) =>
   createHash("sha256").update(token).digest("hex");
 const randomToken = () => randomBytes(32).toString("base64url");
 const sessionCookie = "momentum_session";
-type UserSession = { user_id: string; csrf_token: string; email: string };
+type UserSession = {
+  user_id: string;
+  csrf_token: string;
+  email: string;
+  account_type: "owner" | "team";
+};
 function getSession(req: Request): UserSession | undefined {
   const cookie = (req.headers.cookie || "")
     .split(";")
@@ -61,7 +72,12 @@ function getSession(req: Request): UserSession | undefined {
   if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) return undefined;
   return db
     .prepare(
-      `SELECT s.user_id,s.csrf_token,u.email FROM auth_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`,
+      `SELECT s.user_id,s.csrf_token,u.email,u.account_type
+       FROM auth_sessions s JOIN users u ON u.id=s.user_id
+       WHERE s.token_hash=? AND s.expires_at>?
+       AND (u.account_type='owner' OR EXISTS (
+         SELECT 1 FROM team_members m WHERE m.user_id=u.id AND m.status='active'
+       ))`,
     )
     .get(hash(token), Date.now()) as UserSession | undefined;
 }
@@ -103,17 +119,26 @@ function clearSession(req: Request, res: Response) {
   });
 }
 // Small in-memory throttle; put a reverse-proxy rate limiter in front of a production deployment too.
+// Reserve an attempt while a request is in flight, but only failed attempts
+// consume the window. A team sharing one office IP can sign in successfully.
 const attempts = new Map<string, { count: number; expires: number }>();
 function authThrottle(req: Request, res: Response, next: NextFunction) {
   const key = req.ip || "unknown";
-  const current = attempts.get(key);
-  if (!current || current.expires < Date.now())
-    attempts.set(key, { count: 1, expires: Date.now() + 15 * 60_000 });
-  else if (current.count >= 12)
+  let current = attempts.get(key);
+  if (!current || current.expires < Date.now()) {
+    current = { count: 0, expires: Date.now() + 15 * 60_000 };
+    attempts.set(key, current);
+  }
+  if (current.count >= 12)
     return res
       .status(429)
       .json({ error: "Too many attempts. Please try again later." });
-  else current.count++;
+  current.count++;
+  const entry = current;
+  res.once("finish", () => {
+    if (res.statusCode < 400 && attempts.get(key) === entry)
+      entry.count = Math.max(0, entry.count - 1);
+  });
   return next();
 }
 function requireUser(req: Request, res: Response, next: NextFunction) {
@@ -155,6 +180,14 @@ app.get("/api/auth/status", (req, res) => {
     previewEnabled: preview,
     csrfToken: session?.csrf_token || null,
     email: session?.email || null,
+    accountType: session?.account_type || null,
+    theme: session
+      ? (
+          db
+            .prepare("SELECT theme FROM settings WHERE user_id=?")
+            .get(session.user_id) as { theme: string } | undefined
+        )?.theme || "system"
+      : null,
   });
 });
 app.post("/api/auth/register", authThrottle, async (req, res, next) => {
@@ -164,30 +197,111 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
         name: z.string().trim().min(1).max(100),
         email: z.string().trim().email().max(254),
         password: z.string().min(12).max(200),
+        inviteToken: z
+          .string()
+          .regex(/^[A-Za-z0-9_-]{20,100}$/)
+          .optional(),
       })
       .strict()
       .parse(req.body);
     const count = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
       count: number;
     };
-    if (count.count > 0)
-      return res
-        .status(403)
-        .json({ error: "This private workspace has already been set up." });
-    const userId = id();
+    const email = input.email.toLowerCase();
+    if (count.count === 0) {
+      if (input.inviteToken)
+        return res.status(400).json({
+          error: "Set up the owner workspace before using team invitations.",
+        });
+      const passwordHash = await bcrypt.hash(input.password, 12);
+      // Recheck after the asynchronous hash; only one initial owner is allowed.
+      const afterHash = db
+        .prepare("SELECT COUNT(*) AS count FROM users")
+        .get() as { count: number };
+      if (afterHash.count > 0)
+        return res
+          .status(403)
+          .json({ error: "This private workspace has already been set up." });
+      const userId = id();
+      createWorkspace(userId, email, passwordHash, input.name);
+      return res.json({ csrfToken: setSession(res, userId).csrfToken });
+    }
+    if (!input.inviteToken)
+      return res.status(403).json({
+        error:
+          "This private workspace has already been set up. A team invitation is required.",
+      });
+    const lookup = () =>
+      db
+        .prepare(
+          "SELECT id,workspace_id,role,email FROM team_invites WHERE token_hash=? AND expires_at>? AND accepted_at IS NULL",
+        )
+        .get(hashInvite(input.inviteToken!), Date.now()) as
+        | {
+            id: string;
+            workspace_id: string;
+            role: "manager" | "member";
+            email: string;
+          }
+        | undefined;
+    const beforeHash = lookup();
+    if (!beforeHash || beforeHash.email.toLowerCase() !== email)
+      return res.status(403).json({
+        error:
+          "This invitation is invalid, expired, or addressed to another email.",
+      });
     const passwordHash = await bcrypt.hash(input.password, 12);
-    // Recheck after the asynchronous hash; only one owner is allowed.
-    const afterHash = db
-      .prepare("SELECT COUNT(*) AS count FROM users")
-      .get() as { count: number };
-    if (afterHash.count > 0)
-      return res
-        .status(403)
-        .json({ error: "This private workspace has already been set up." });
-    createWorkspace(userId, input.email, passwordHash, input.name);
-    res.json({ csrfToken: setSession(res, userId).csrfToken });
+    const userId = id(),
+      stamp = now();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      // Invitation consumption and account creation are atomic and rechecked
+      // after the asynchronous password hash.
+      const invite = lookup();
+      if (!invite || invite.email.toLowerCase() !== email) {
+        db.exec("ROLLBACK");
+        return res.status(403).json({
+          error: "This invitation is invalid, expired, or already used.",
+        });
+      }
+      if (db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email)) {
+        db.exec("ROLLBACK");
+        return res.status(409).json({
+          error: "This email already has an account. Please sign in.",
+        });
+      }
+      db.prepare(
+        "INSERT INTO users(id,email,password_hash,account_type,created_at) VALUES (?,?,?,'team',?)",
+      ).run(userId, email, passwordHash, stamp);
+      // Team accounts have only a profile and team access; do not seed the
+      // owner's private cycles, plans, revenue or clients into their portal.
+      db.prepare(
+        "INSERT INTO settings(id,user_id,name,theme,auto_plan,daily_templates,created_at,updated_at) VALUES (?,?,?,'system',0,'[]',?,?)",
+      ).run(id(), userId, input.name, stamp, stamp);
+      db.prepare(
+        "INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,?,'active',?)",
+      ).run(id(), invite.workspace_id, userId, invite.role, stamp);
+      db.prepare(
+        "UPDATE team_invites SET accepted_at=? WHERE id=? AND accepted_at IS NULL",
+      ).run(stamp, invite.id);
+      db.prepare(
+        "INSERT INTO team_activity(id,workspace_id,actor_user_id,action,entity_type,entity_id,summary,created_at) VALUES (?,?,?,'joined','member',?,?,?)",
+      ).run(
+        id(),
+        invite.workspace_id,
+        userId,
+        userId,
+        `${input.name} joined the team`,
+        stamp,
+      );
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+    return res.json({ csrfToken: setSession(res, userId).csrfToken });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 });
 app.post("/api/auth/login", authThrottle, async (req, res, next) => {
@@ -200,17 +314,29 @@ app.post("/api/auth/login", authThrottle, async (req, res, next) => {
       .strict()
       .parse(req.body);
     const user = db
-      .prepare("SELECT id,password_hash FROM users WHERE email=?")
+      .prepare("SELECT id,password_hash,account_type FROM users WHERE email=?")
       .get(input.email.toLowerCase()) as
-      { id: string; password_hash: string } | undefined;
+      | { id: string; password_hash: string; account_type: "owner" | "team" }
+      | undefined;
     // Verify against a fixed hash for unknown accounts to avoid a cheap account-existence timing oracle.
     const matches = await bcrypt.compare(
       input.password,
       user?.password_hash ||
         "$2b$12$C6UzMDM.H6dfI/f/IKcEe.ouQvB9ynvFq4EejZ4y4xO6K3mQZsVTa",
     );
-    if (!user || !matches)
-      return res.status(401).json({ error: "Email or password is incorrect." });
+    const active =
+      user?.account_type !== "team" ||
+      Boolean(
+        db
+          .prepare(
+            "SELECT 1 FROM team_members WHERE user_id=? AND status='active'",
+          )
+          .get(user.id),
+      );
+    if (!user || !matches || !active)
+      return res.status(401).json({
+        error: "Email or password is incorrect, or access is unavailable.",
+      });
     res.json({ csrfToken: setSession(res, user.id).csrfToken });
   } catch (error) {
     next(error);
@@ -230,6 +356,17 @@ app.post("/api/auth/preview", authThrottle, (_req, res) => {
 app.post("/api/auth/logout", requireUser, (req, res) => {
   clearSession(req, res);
   res.json({ ok: true });
+});
+
+// Team routes share authentication and CSRF protection, but never expose
+// owner-only personal resources to team accounts.
+app.use("/api/team", requireUser, teamRouter);
+app.use("/api", requireUser, (_req, res, next) => {
+  if ((res.locals.session as UserSession).account_type !== "owner")
+    return res
+      .status(403)
+      .json({ error: "This account can access shared team work only." });
+  return next();
 });
 
 const resources = Object.keys(configs) as Resource[];
@@ -256,11 +393,46 @@ app.get("/api/bootstrap", requireUser, (_req, res) => {
 });
 app.get("/api/export", requireUser, (_req, res) => {
   const userId = (res.locals.session as UserSession).user_id;
+  const workspaceId = ensureTeamOwnerWorkspace(userId);
+  // The JSON export contains shared work but never password hashes, session
+  // secrets, or invitation token hashes. Full recovery still requires a DB backup.
+  const team = {
+    workspace: db
+      .prepare(
+        "SELECT id,name,created_at,updated_at FROM team_workspaces WHERE id=?",
+      )
+      .get(workspaceId),
+    members: db
+      .prepare(
+        "SELECT m.user_id,m.role,m.status,m.joined_at,u.email,s.name FROM team_members m JOIN users u ON u.id=m.user_id JOIN settings s ON s.user_id=m.user_id WHERE m.workspace_id=?",
+      )
+      .all(workspaceId),
+    goals: db
+      .prepare("SELECT * FROM team_goals WHERE workspace_id=?")
+      .all(workspaceId),
+    tasks: db
+      .prepare("SELECT * FROM team_tasks WHERE workspace_id=?")
+      .all(workspaceId),
+    comments: db
+      .prepare(
+        "SELECT c.* FROM team_comments c JOIN team_tasks t ON t.id=c.task_id WHERE t.workspace_id=?",
+      )
+      .all(workspaceId),
+    activity: db
+      .prepare("SELECT * FROM team_activity WHERE workspace_id=?")
+      .all(workspaceId),
+    invitations: db
+      .prepare(
+        "SELECT id,email,role,expires_at,accepted_at,created_at FROM team_invites WHERE workspace_id=?",
+      )
+      .all(workspaceId),
+  };
   res.json({
     format: "momentum-os-export",
     version: 1,
     exported_at: now(),
     data: getBootstrap(userId),
+    team,
   });
 });
 app.patch("/api/settings", requireUser, (req, res, next) => {

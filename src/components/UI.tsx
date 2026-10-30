@@ -143,15 +143,18 @@ export function Progress({
   value,
   className = "",
   color = "accent",
+  label = "Progress",
 }: {
   value: number;
   className?: string;
   color?: string;
+  label?: string;
 }) {
   return (
     <div
       className={`progress-track ${className}`}
       role="progressbar"
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.max(0, Math.min(100, value))}

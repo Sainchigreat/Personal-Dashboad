@@ -20,6 +20,7 @@ import { asRecord, useApp } from "../lib/store";
 import { addDays, displayDate } from "../lib/date";
 import { dayTasks, isOpenTask, percentage } from "../lib/metrics";
 import type { Task } from "../types";
+import { TeamDaySection } from "../components/TeamWork";
 import {
   Button,
   Checkbox,
@@ -37,8 +38,17 @@ function formatMinutes(value: number) {
   return hours ? `${hours}h${minutes ? ` ${minutes}m` : ""}` : `${minutes}m`;
 }
 export default function MyDay() {
-  const { data, cycle, today, openForm, update, create, batchUpdate, toast } =
-    useApp();
+  const {
+    data,
+    cycle,
+    today,
+    openForm,
+    update,
+    create,
+    batchUpdate,
+    toast,
+    setPage,
+  } = useApp();
   const [day, setDay] = useState(today);
   const [focus, setFocus] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -380,6 +390,7 @@ export default function MyDay() {
                   </div>
                 </section>
               )}
+              <TeamDaySection day={day} onOpenTeam={() => setPage("team")} />
               <section className="panel reflection-panel">
                 <SectionHeading
                   title="Daily reflection"

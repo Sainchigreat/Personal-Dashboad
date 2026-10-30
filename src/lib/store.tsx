@@ -7,10 +7,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, setCsrf, setPreviewToken } from "./api";
+import { api, ApiError, setCsrf, setPreviewToken } from "./api";
 import { todayInZone } from "./date";
 import { browserStorage } from "./storage";
 import { watchTheme } from "./theme";
+import { invitationToken } from "./invite";
 import type {
   AuthStatus,
   Cycle,
@@ -30,6 +31,7 @@ const pages: Page[] = [
   "brand",
   "pipeline",
   "review",
+  "team",
   "settings",
 ];
 const pageFromHash = (): Page => {
@@ -83,11 +85,18 @@ export const asRecord = (item: unknown) => item as Record<string, unknown>;
 export function AppProvider({
   children,
   authView,
+  teamView,
 }: {
   children: ReactNode;
   authView: (props: {
     status: AuthStatus;
     onAuthenticated: () => Promise<void>;
+    onSignOut: () => Promise<void>;
+  }) => ReactNode;
+  teamView: (props: {
+    auth: AuthStatus;
+    signOut: () => Promise<void>;
+    onThemeChanged: (theme: import("../types").ThemePreference) => void;
   }) => ReactNode;
 }) {
   const [auth, setAuth] = useState<AuthStatus | null>(null);
@@ -111,6 +120,7 @@ export function AppProvider({
     const status = await api<AuthStatus>("/auth/status");
     if (
       !status.authenticated &&
+      !invitationToken() &&
       status.previewEnabled &&
       browserStorage.get("momentum-preview-signed-out") !== "1"
     ) {
@@ -127,7 +137,7 @@ export function AppProvider({
     }
     setCsrf(status.csrfToken);
     setAuth(status);
-    if (status.authenticated) await refresh();
+    if (status.authenticated && status.accountType !== "team") await refresh();
     else setData(null);
   }, [refresh]);
   useEffect(() => {
@@ -148,8 +158,8 @@ export function AppProvider({
     return () => window.clearTimeout(timer);
   }, [notice]);
   useEffect(
-    () => watchTheme(data?.settings.theme ?? "system"),
-    [data?.settings.theme],
+    () => watchTheme(data?.settings.theme ?? auth?.theme ?? "system"),
+    [data?.settings.theme, auth?.theme],
   );
   const setPage = useCallback((value: Page) => {
     location.hash = value;
@@ -228,7 +238,12 @@ export function AppProvider({
     [refresh],
   );
   const signOut = useCallback(async () => {
-    await api("/auth/logout", { method: "POST" });
+    try {
+      await api("/auth/logout", { method: "POST" });
+    } catch (error) {
+      // A suspended or expired session is already signed out server-side.
+      if (!(error instanceof ApiError) || error.status !== 401) throw error;
+    }
     setCsrf(null);
     setPreviewToken(null);
     browserStorage.set("momentum-preview-signed-out", "1");
@@ -322,8 +337,28 @@ export function AppProvider({
         <p>Opening your workspace…</p>
       </div>
     );
-  if (!auth.authenticated)
-    return <>{authView({ status: auth, onAuthenticated: checkAuth })}</>;
+  const invitePending = Boolean(invitationToken());
+  if (!auth.authenticated || invitePending)
+    return (
+      <>
+        {authView({
+          status: auth,
+          onAuthenticated: checkAuth,
+          onSignOut: signOut,
+        })}
+      </>
+    );
+  if (auth.accountType === "team")
+    return (
+      <>
+        {teamView({
+          auth,
+          signOut,
+          onThemeChanged: (theme) =>
+            setAuth((old) => (old ? { ...old, theme } : old)),
+        })}
+      </>
+    );
   if (!value)
     return (
       <div className="boot-screen">

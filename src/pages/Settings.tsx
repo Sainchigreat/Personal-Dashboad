@@ -582,9 +582,9 @@ export default function Settings() {
                 <span>
                   <strong>Export a JSON backup</strong>
                   <small>
-                    Includes your cycles, tasks, transactions, projects,
-                    content, and settings. Passwords and sessions are never
-                    exported.
+                    Includes your personal records and shared team work.
+                    Passwords, sessions, and invitation secrets are never
+                    exported. Keep a database backup for full recovery.
                   </small>
                 </span>
                 <Button icon={Download} onClick={exportData}>

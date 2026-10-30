@@ -136,4 +136,82 @@ describe("browser-only preview adapter", () => {
       true,
     );
   });
+  it("simulates a sample team locally without presenting invitations as real", async () => {
+    const demo = makeDemo();
+    const ownerTeam = (await demo.request("GET", "/team/bootstrap")).body;
+    expect(ownerTeam.goals).toHaveLength(0);
+    expect(ownerTeam.tasks).toHaveLength(0);
+    expect(
+      ownerTeam.members.find((m: any) => m.user_id === "sample-member").name,
+    ).toBe("Sample teammate");
+    expect(
+      (
+        await demo.request("POST", "/team/invites", {
+          email: "someone@example.com",
+          role: "member",
+        })
+      ).status,
+    ).toBe(403);
+    const goal = await demo.request("POST", "/team/goals", {
+      title: "Sample goal",
+      target: 3,
+      current: 0,
+      unit: "pieces",
+    });
+    const task = await demo.request("POST", "/team/tasks", {
+      title: "Sample assignment",
+      assignee_user_id: "sample-member",
+      reviewer_user_id: ownerTeam.membership.user_id,
+      goal_id: goal.body.id,
+      priority: "medium",
+    });
+    expect(task.status).toBe(201);
+    await demo.request("POST", "/team/demo-switch");
+    expect((await demo.request("GET", "/auth/status")).body.accountType).toBe(
+      "team",
+    );
+    expect((await demo.request("GET", "/bootstrap")).status).toBe(403);
+    const memberTeam = (await demo.request("GET", "/team/bootstrap")).body;
+    expect(memberTeam.tasks.map((t: any) => t.title)).toEqual([
+      "Sample assignment",
+    ]);
+    expect(
+      (
+        await demo.request("PATCH", `/team/tasks/${task.body.id}/status`, {
+          status: "in_progress",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await demo.request("PATCH", `/team/tasks/${task.body.id}/status`, {
+          status: "submitted",
+          submission: "Sample work",
+        })
+      ).status,
+    ).toBe(200);
+    await demo.request("POST", "/team/demo-switch");
+    expect(
+      (
+        await demo.request("PATCH", `/team/tasks/${task.body.id}`, {
+          reviewer_user_id: ownerTeam.membership.user_id,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await demo.request("PATCH", `/team/tasks/${task.body.id}/status`, {
+          status: "approved",
+          feedback: "Reviewed",
+        })
+      ).status,
+    ).toBe(200);
+    const reopened = makeDemo(demo.storage);
+    const saved = (await reopened.request("GET", "/team/bootstrap")).body;
+    expect(saved.tasks[0]).toMatchObject({
+      title: "Sample assignment",
+      status: "approved",
+    });
+    expect(saved.goals[0].current).toBe(0);
+  });
 });

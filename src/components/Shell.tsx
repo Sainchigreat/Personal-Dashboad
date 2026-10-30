@@ -20,6 +20,7 @@ import {
   Search,
   Settings2,
   Sparkles,
+  UsersRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -48,6 +49,10 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
       { page: "brand", label: "Personal Brand", icon: PenLine },
       { page: "pipeline", label: "Client Pipeline", icon: BriefcaseBusiness },
     ],
+  },
+  {
+    title: "COLLABORATION",
+    items: [{ page: "team", label: "Team Workspace", icon: UsersRound }],
   },
   {
     title: "SYSTEM",
@@ -295,6 +300,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div className="top-actions">
             <button
               className="search-trigger"
+              aria-label="Search workspace"
               onClick={() => setSearchOpen(true)}
             >
               <Search size={15} />
@@ -364,6 +370,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 variant="primary"
                 icon={Plus}
                 className="quick-add"
+                aria-label="Quick add"
                 onClick={() => {
                   setQuickOpen(!quickOpen);
                   setAlertsOpen(false);

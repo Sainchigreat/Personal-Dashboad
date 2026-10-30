@@ -77,6 +77,353 @@
     return { data, generatedDays: [today], signedOut: false };
   }
   let state = load();
+  // Browser-only team simulation. Sample people are clearly labelled and no
+  // invitation or private account is created or synced by this adapter.
+  function teamState() {
+    if (!state.team) {
+      const stamp = now();
+      state.team = {
+        workspace: { id: "demo-team", name: "Team Workspace" },
+        viewer: "owner",
+        memberTheme: "system",
+        members: [
+          {
+            user_id: state.data.settings.user_id,
+            name: state.data.settings.name || "Demo owner",
+            email: "preview@momentum.local",
+            role: "owner",
+            status: "active",
+            joined_at: stamp,
+          },
+          {
+            user_id: "sample-member",
+            name: "Sample teammate",
+            email: "sample@example.invalid",
+            role: "member",
+            status: "active",
+            joined_at: stamp,
+          },
+        ],
+        goals: [],
+        tasks: [],
+        comments: [],
+        activity: [],
+      };
+    }
+    // Keep an edited owner profile in sync without overwriting demo team work.
+    state.team.members[0].name = state.data.settings.name || "Demo owner";
+    return state.team;
+  }
+  function teamViewer() {
+    const team = teamState();
+    return team.members[team.viewer === "member" ? 1 : 0];
+  }
+  function teamEvent(entityType, entityId, summary) {
+    const team = teamState(),
+      actor = teamViewer();
+    team.activity.unshift({
+      id: id(),
+      entity_type: entityType,
+      entity_id: entityId,
+      name: actor.name,
+      summary,
+      created_at: now(),
+    });
+  }
+  function teamBootstrap() {
+    const team = teamState(),
+      viewer = teamViewer(),
+      isMember = viewer.role === "member";
+    const tasks = team.tasks.filter(
+      (task) => !isMember || task.assignee_user_id === viewer.user_id,
+    );
+    const ids = new Set(tasks.map((task) => task.id));
+    const name = (userId) =>
+      team.members.find((member) => member.user_id === userId)?.name || null;
+    return {
+      workspace: team.workspace,
+      membership: {
+        workspace_id: team.workspace.id,
+        user_id: viewer.user_id,
+        role: viewer.role,
+        status: viewer.status,
+      },
+      members: team.members.map((member) => ({
+        ...member,
+        email:
+          isMember && member.user_id !== viewer.user_id ? null : member.email,
+      })),
+      goals: team.goals.map((goal) => ({
+        ...goal,
+        owner_name: name(goal.owner_user_id),
+      })),
+      tasks: tasks.map((task) => ({
+        ...task,
+        assignee_name: name(task.assignee_user_id),
+        reviewer_name: name(task.reviewer_user_id),
+        goal_title:
+          team.goals.find((goal) => goal.id === task.goal_id)?.title || null,
+      })),
+      comments: team.comments.filter((comment) => ids.has(comment.task_id)),
+      activity: team.activity
+        .filter(
+          (event) =>
+            !isMember ||
+            event.entity_type === "goal" ||
+            (event.entity_type === "task" && ids.has(event.entity_id)),
+        )
+        .slice(0, 50),
+      invites: [],
+      preferences: {
+        theme: isMember ? team.memberTheme : state.data.settings.theme,
+      },
+    };
+  }
+  function teamRoute(path, method, body) {
+    const team = teamState(),
+      viewer = teamViewer(),
+      manager = viewer.role !== "member";
+    if (path === "/team/demo-switch" && method === "POST") {
+      team.viewer = team.viewer === "owner" ? "member" : "owner";
+      save();
+      return output({ ok: true });
+    }
+    if (path === "/team/bootstrap" && method === "GET")
+      return output(teamBootstrap());
+    if (path === "/team/preferences" && method === "PATCH") {
+      if (!["system", "light", "dark"].includes(body.theme))
+        fail("Choose a valid appearance.");
+      if (manager) state.data.settings.theme = body.theme;
+      else team.memberTheme = body.theme;
+      save();
+      return output({ theme: body.theme });
+    }
+    if (path === "/team/invites")
+      fail(
+        "Invitations are unavailable in this browser demo. Use a private deployment.",
+        403,
+      );
+    if (path.startsWith("/team/members/"))
+      fail("Sample team access cannot be changed in the browser demo.", 403);
+    const parts = path.split("/").filter(Boolean),
+      resource = parts[1],
+      itemId = parts[2];
+    if (resource === "goals") {
+      if (!manager) fail("Only a team lead can manage goals.", 403);
+      if (!["POST", "PATCH"].includes(method)) fail("Action unavailable.", 404);
+      const goal = itemId && team.goals.find((item) => item.id === itemId);
+      if (itemId && !goal) fail("Goal not found.", 404);
+      const value = { ...(goal || {}), ...body };
+      if (
+        !String(value.title || "").trim() ||
+        !String(value.unit || "").trim() ||
+        !(Number(value.target) > 0) ||
+        Number(value.current) < 0
+      )
+        fail(
+          "Enter a title, unit, positive target, and non-negative progress.",
+        );
+      if (
+        value.owner_user_id &&
+        !team.members.some(
+          (person) =>
+            person.user_id === value.owner_user_id &&
+            person.status === "active",
+        )
+      )
+        fail("Goal owner must be an active team member.");
+      const saved = goal || { id: id(), created_at: now() };
+      Object.assign(saved, body, { updated_at: now() });
+      if (!goal) team.goals.push(saved);
+      teamEvent(
+        "goal",
+        saved.id,
+        `${goal ? "Updated" : "Created"} the shared goal: ${saved.title}`,
+      );
+      save();
+      return output(saved, goal ? 200 : 201);
+    }
+    if (resource === "tasks") {
+      if (!itemId && method === "POST") {
+        if (!manager) fail("Only a team lead can assign work.", 403);
+        const assignee = team.members.find(
+          (person) =>
+            person.user_id === body.assignee_user_id &&
+            person.status === "active",
+        );
+        const reviewer = team.members.find(
+          (person) =>
+            person.user_id === body.reviewer_user_id &&
+            person.status === "active" &&
+            person.role !== "member",
+        );
+        if (!String(body.title || "").trim() || !assignee)
+          fail("Enter a title and choose an active assignee.");
+        if (!reviewer || reviewer.user_id === assignee.user_id)
+          fail("Choose an active reviewer other than the assignee.");
+        if (
+          body.goal_id &&
+          !team.goals.some((goal) => goal.id === body.goal_id)
+        )
+          fail("Selected team goal is unavailable.");
+        const task = {
+          id: id(),
+          title: body.title,
+          description: body.description || "",
+          assignee_user_id: assignee.user_id,
+          reviewer_user_id: reviewer.user_id,
+          goal_id: body.goal_id || null,
+          priority: body.priority || "medium",
+          status: "assigned",
+          due_date: body.due_date || null,
+          deliverable: body.deliverable || "",
+          submission: "",
+          feedback: "",
+          created_at: now(),
+          updated_at: now(),
+        };
+        team.tasks.push(task);
+        teamEvent("task", task.id, `Assigned: ${task.title}`);
+        save();
+        return output(task, 201);
+      }
+      const task = team.tasks.find(
+        (item) =>
+          item.id === itemId &&
+          (manager || item.assignee_user_id === viewer.user_id),
+      );
+      if (!task) fail("Task not found.", 404);
+      if (parts[3] === "status" && method === "PATCH") {
+        const work = ["in_progress", "submitted"].includes(body.status);
+        if (work && task.assignee_user_id !== viewer.user_id)
+          fail("Only the assignee can update this work.", 403);
+        if (
+          !work &&
+          (!manager ||
+            task.assignee_user_id === viewer.user_id ||
+            (viewer.role !== "owner" &&
+              task.reviewer_user_id !== viewer.user_id))
+        )
+          fail("Only the reviewer or owner can review this work.", 403);
+        const transitions = {
+          assigned: ["in_progress"],
+          in_progress: ["submitted"],
+          revision_requested: ["in_progress"],
+          submitted: ["approved", "revision_requested"],
+          approved: ["completed"],
+        };
+        if (!transitions[task.status]?.includes(body.status))
+          fail(
+            "That status change is not available from the current stage.",
+            409,
+          );
+        if (
+          body.status === "submitted" &&
+          !String(body.submission || "").trim()
+        )
+          fail("Describe the work before submitting.");
+        if (
+          body.status === "revision_requested" &&
+          !String(body.feedback || "").trim()
+        )
+          fail("Add feedback for the assignee.");
+        task.status = body.status;
+        if (body.status === "submitted") task.submission = body.submission;
+        if (["approved", "revision_requested"].includes(body.status))
+          task.feedback = body.feedback || "";
+        task.updated_at = now();
+        teamEvent(
+          "task",
+          task.id,
+          `${task.title}: ${task.status.replaceAll("_", " ")}`,
+        );
+        save();
+        return output(task);
+      }
+      if (parts[3] === "comments" && method === "POST") {
+        if (!String(body.body || "").trim()) fail("A comment is required.");
+        const comment = {
+          id: id(),
+          task_id: task.id,
+          user_id: viewer.user_id,
+          name: viewer.name,
+          body: String(body.body).trim(),
+          created_at: now(),
+        };
+        team.comments.push(comment);
+        teamEvent("task", task.id, `Commented on: ${task.title}`);
+        save();
+        return output(comment, 201);
+      }
+      if (!parts[3] && method === "PATCH") {
+        if (!manager) fail("Only a team lead can edit assignments.", 403);
+        const reviewerOnly =
+          ["submitted", "approved"].includes(task.status) &&
+          Object.keys(body).length === 1 &&
+          "reviewer_user_id" in body;
+        if (reviewerOnly) {
+          if (viewer.role !== "owner")
+            fail(
+              "Only the owner can replace the reviewer after submission.",
+              403,
+            );
+          const reviewer = team.members.find(
+            (person) =>
+              person.user_id === body.reviewer_user_id &&
+              person.status === "active" &&
+              person.role !== "member" &&
+              person.user_id !== task.assignee_user_id,
+          );
+          if (!reviewer)
+            fail("Choose an active reviewer other than the assignee.");
+          task.reviewer_user_id = reviewer.user_id;
+          task.updated_at = now();
+          teamEvent("task", task.id, `Updated: ${task.title}`);
+          save();
+          return output(task);
+        }
+        if (
+          !["assigned", "in_progress", "revision_requested"].includes(
+            task.status,
+          )
+        )
+          fail(
+            "Submitted or reviewed work cannot be edited. Request changes first.",
+            409,
+          );
+        if (
+          body.assignee_user_id !== task.assignee_user_id &&
+          task.status !== "assigned"
+        )
+          fail("Reassign work before it is started.", 409);
+        const assignee = team.members.find(
+          (person) =>
+            person.user_id === body.assignee_user_id &&
+            person.status === "active",
+        );
+        const reviewer = team.members.find(
+          (person) =>
+            person.user_id === body.reviewer_user_id &&
+            person.status === "active" &&
+            person.role !== "member",
+        );
+        if (!assignee || !reviewer || assignee.user_id === reviewer.user_id)
+          fail("Choose an active reviewer other than the assignee.");
+        if (!String(body.title || "").trim())
+          fail("An assignment title is required.");
+        if (
+          body.goal_id &&
+          !team.goals.some((goal) => goal.id === body.goal_id)
+        )
+          fail("Selected team goal is unavailable.");
+        Object.assign(task, body, { updated_at: now() });
+        teamEvent("task", task.id, `Updated: ${task.title}`);
+        save();
+        return output(task);
+      }
+    }
+    fail("This action is not available in the demo.", 404);
+  }
   function save() {
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
@@ -381,10 +728,22 @@
           needsSetup: false,
           previewEnabled: true,
           csrfToken: state.signedOut ? null : "local-demo",
-          email: state.signedOut ? null : "preview@momentum.local",
+          email: state.signedOut ? null : teamViewer().email,
+          accountType: state.signedOut
+            ? null
+            : teamViewer().role === "member"
+              ? "team"
+              : "owner",
+          theme: state.signedOut
+            ? null
+            : teamViewer().role === "member"
+              ? teamState().memberTheme
+              : state.data.settings.theme,
+          browserDemo: true,
         });
       if (path === "/auth/preview" && method === "POST") {
         state.signedOut = false;
+        teamState().viewer = "owner";
         save();
         return output({ csrfToken: "local-demo", previewToken: "local-demo" });
       }
@@ -398,6 +757,9 @@
         return output({ ok: true });
       }
       if (state.signedOut) fail("Open the demo preview to continue.", 401);
+      if (path.startsWith("/team/")) return teamRoute(path, method, body);
+      if (teamViewer().role === "member")
+        fail("This sample account can access shared work only.", 403);
       if (path === "/bootstrap" && method === "GET") {
         planDay();
         return output(state.data);
@@ -408,6 +770,7 @@
           version: 1,
           exported_at: now(),
           data: state.data,
+          team: teamBootstrap(),
         });
       if (path === "/settings" && method === "PATCH") {
         const combined = { ...state.data.settings, ...body };
