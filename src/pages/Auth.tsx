@@ -12,7 +12,9 @@ export default function Auth({
   status: AuthStatus;
   onAuthenticated: () => Promise<void>;
 }) {
-  const inviteToken = new URLSearchParams(window.location.search).get("token") || "";\n  const registrationMode = status.needsSetup || Boolean(inviteToken);\n  const [error, setError] = useState("");
+  const inviteToken = new URLSearchParams(window.location.search).get("token") || "";
+  const registrationMode = status.needsSetup || Boolean(inviteToken);
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,7 +26,8 @@ export default function Auth({
         email: String(fields.get("email")),
         password: String(fields.get("password")),
       };
-      if (registrationMode) body.name = String(fields.get("name"));\n      if (inviteToken) body.inviteToken = inviteToken;
+      if (registrationMode) body.name = String(fields.get("name"));
+      if (inviteToken) body.inviteToken = inviteToken;
       const result = await api<{ csrfToken: string }>(
         registrationMode ? "/auth/register" : "/auth/login",
         { method: "POST", body },
