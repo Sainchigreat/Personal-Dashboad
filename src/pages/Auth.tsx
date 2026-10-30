@@ -12,7 +12,7 @@ export default function Auth({
   status: AuthStatus;
   onAuthenticated: () => Promise<void>;
 }) {
-  const [error, setError] = useState("");
+  const inviteToken = new URLSearchParams(window.location.search).get("token") || "";\n  const registrationMode = status.needsSetup || Boolean(inviteToken);\n  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,9 +24,9 @@ export default function Auth({
         email: String(fields.get("email")),
         password: String(fields.get("password")),
       };
-      if (status.needsSetup) body.name = String(fields.get("name"));
+      if (registrationMode) body.name = String(fields.get("name"));\n      if (inviteToken) body.inviteToken = inviteToken;
       const result = await api<{ csrfToken: string }>(
-        status.needsSetup ? "/auth/register" : "/auth/login",
+        registrationMode ? "/auth/register" : "/auth/login",
         { method: "POST", body },
       );
       setCsrf(result.csrfToken);
@@ -88,7 +88,7 @@ export default function Auth({
             <LockKeyhole size={20} />
           </div>
           <h2>
-            {status.needsSetup ? "Create your workspace" : "Welcome back"}
+            {registrationMode ? "Join the workspace" : "Welcome back"}
           </h2>
           <p>
             {status.needsSetup
@@ -96,7 +96,7 @@ export default function Auth({
               : "Sign in to continue where you left off."}
           </p>
           <form onSubmit={submit} className="auth-form">
-            {status.needsSetup && (
+            {registrationMode && (
               <label>
                 Name
                 <input
@@ -122,7 +122,7 @@ export default function Auth({
               <input
                 name="password"
                 type="password"
-                minLength={status.needsSetup ? 12 : undefined}
+                minLength={registrationMode ? 12 : undefined}
                 placeholder={
                   status.needsSetup
                     ? "At least 12 characters"
@@ -130,7 +130,7 @@ export default function Auth({
                 }
                 required
                 autoComplete={
-                  status.needsSetup ? "new-password" : "current-password"
+                  registrationMode ? "new-password" : "current-password"
                 }
               />
             </label>
