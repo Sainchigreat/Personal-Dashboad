@@ -94,8 +94,19 @@ if (/url\((['"]?)\/assets\//.test(css))
 const bannerStyles = `
 #demo-notice{position:fixed;z-index:10000;left:50%;bottom:12px;transform:translateX(-50%);max-width:calc(100vw - 24px);display:flex;gap:8px;align-items:center;padding:8px 12px;background:#263c70;color:#fff;border:1px solid #6689de;border-radius:8px;box-shadow:0 5px 22px #0008;font:500 12px/1.4 Inter,system-ui,sans-serif}
 #demo-notice strong{white-space:nowrap}#demo-notice button{border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer;line-height:1}
+#visual-fallback{position:fixed;inset:0;z-index:9999;overflow:auto;background:#0c0f18;color:#fff;font:500 13px/1.45 Inter,system-ui,sans-serif}
+#visual-fallback .fallback-message{position:sticky;top:0;z-index:1;padding:11px 16px;text-align:center;background:#263c70;border-bottom:1px solid #6689de}
+#visual-fallback a{color:#fff;text-decoration:underline;font-weight:700}#visual-fallback img{display:block;width:100%;height:auto}
 @media(max-width:600px){#demo-notice{width:calc(100% - 24px);font-size:11px;justify-content:center}}
 `;
+// The static image is shown only if a third-party previewer cannot start the
+// application. React replaces it as soon as the real interface mounts.
+const screenshot = readFileSync(
+  resolve(root, "preview/screenshot.png"),
+).toString("base64");
+const backupUrl =
+  "https://raw.githack.com/Sainchigreat/Personal-Dashboad/arena/a531ed6e-personal-dashboad/preview/index.html";
+const fallback = `<div id="visual-fallback"><div class="fallback-message"><strong>Visual preview.</strong> If the interactive app does not load, <a href="${backupUrl}" target="_top">open the alternative preview</a> and choose “Open the page”.</div><img alt="Visual example of the Momentum OS Command Centre" src="data:image/png;base64,${screenshot}"></div>`;
 let html = builtHtml
   .replace(
     scriptMatch[0],
@@ -103,6 +114,7 @@ let html = builtHtml
       `<script>${adapter}</script>\n<script type="module">${javascript}</script>`,
   )
   .replace(cssMatch[0], () => `<style>${css}\n${bannerStyles}</style>`)
+  .replace('<div id="root">', () => `<div id="root">${fallback}`)
   .replace(
     "</body>",
     `<div id="demo-notice" role="status"><strong>Preview only</strong><span>Changes stay in this browser and are not synced or private.</span><button type="button" aria-label="Dismiss preview notice" onclick="this.parentElement.remove()">×</button></div>\n</body>`,
