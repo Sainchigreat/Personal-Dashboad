@@ -1,0 +1,435 @@
+/* Browser-only demo adapter. The real application always uses its authenticated API. */
+(() => {
+  const initial = __PREVIEW_SEED__;
+  const defaults = __PREVIEW_DEFAULTS__;
+  const required = __PREVIEW_REQUIRED__;
+  const references = __PREVIEW_REFERENCES__;
+  const storageKey = "momentum-os-browser-demo-v1";
+  const originalFetch = window.fetch.bind(window);
+  const copy = (value) => JSON.parse(JSON.stringify(value));
+  const now = () => new Date().toISOString();
+  const id = () =>
+    window.crypto?.randomUUID?.() ||
+    "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const n = (Math.random() * 16) | 0;
+      return (c === "x" ? n : (n & 3) | 8).toString(16);
+    });
+  const dateInZone = (zone) => {
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: zone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).formatToParts(new Date());
+      const get = (name) => parts.find((item) => item.type === name).value;
+      return `${get("year")}-${get("month")}-${get("day")}`;
+    } catch {
+      return new Date().toISOString().slice(0, 10);
+    }
+  };
+  function load() {
+    try {
+      const value = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (value && value.data && Array.isArray(value.generatedDays))
+        return value;
+    } catch {
+      /* Use a clean demo if storage is unavailable or invalid. */
+    }
+    const data = copy(initial);
+    // A preview built on a different date should still show today's planned tasks.
+    const today = dateInZone(data.settings.timezone);
+    const cycle = data.cycles.find((item) => item.month === today.slice(0, 7));
+    data.tasks.forEach((task) => {
+      task.due_date = today;
+      task.cycle_id = cycle?.id || null;
+    });
+    return { data, generatedDays: [today], signedOut: false };
+  }
+  let state = load();
+  function save() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    } catch {
+      /* The preview continues in memory. */
+    }
+  }
+  function fail(message, status = 400) {
+    throw { message, status };
+  }
+  function output(value, status = 200) {
+    return new Response(JSON.stringify(value), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  function row(resource, data) {
+    const stamp = now();
+    return {
+      ...defaults[resource],
+      id: id(),
+      user_id: state.data.settings.user_id,
+      ...data,
+      created_at: stamp,
+      updated_at: stamp,
+    };
+  }
+  function normalize(data) {
+    const value = { ...data };
+    Object.keys(value).forEach((key) => {
+      if (
+        value[key] === "" &&
+        (key.endsWith("_id") ||
+          key.endsWith("_date") ||
+          ["day", "week_start", "researched_at"].includes(key))
+      )
+        value[key] = null;
+    });
+    return value;
+  }
+  function check(resource, input, previous) {
+    const data = normalize(input);
+    const combined = { ...previous, ...data };
+    for (const field of required[resource] || []) {
+      if (
+        (!previous || field in data) &&
+        (combined[field] === null ||
+          combined[field] === undefined ||
+          combined[field] === "")
+      )
+        fail(`${field.replaceAll("_", " ")} is required.`);
+    }
+    for (const [key, table] of Object.entries(references)) {
+      if (data[key] && !state.data[table].some((item) => item.id === data[key]))
+        fail(`The selected ${key.replace("_id", "")} is unavailable.`);
+    }
+    if (resource === "sales") {
+      if (combined.status === "paid" && Number(combined.amount) <= 0)
+        fail("A confirmed paid sale must have an amount greater than zero.");
+      const cycle = state.data.cycles.find(
+        (item) => item.id === combined.cycle_id,
+      );
+      if (
+        cycle &&
+        combined.sale_date &&
+        !String(combined.sale_date).startsWith(cycle.month)
+      )
+        fail("Sale date must fall within its operating cycle.");
+    }
+    if (resource === "content_items") {
+      if (
+        previous &&
+        [
+          "title",
+          "body",
+          "ai_assisted",
+          "session_id",
+          "project_id",
+          "asset_url",
+        ].some((key) => key in data && data[key] !== previous[key]) &&
+        !("human_approved" in data)
+      ) {
+        data.human_approved = 0;
+        combined.human_approved = 0;
+      }
+      if (
+        ["Published", "Distributed"].includes(combined.status) &&
+        (combined.ai_assisted === 1 || combined.session_id) &&
+        combined.human_approved !== 1
+      )
+        fail(
+          "Human review and approval are required before marking this content published.",
+        );
+      if (
+        ["Published", "Distributed"].includes(combined.status) &&
+        !combined.published_date
+      )
+        data.published_date = dateInZone(state.data.settings.timezone);
+    }
+    if (resource === "tasks" && "status" in data) {
+      if (data.status === "done" && previous?.status !== "done")
+        data.completed_at = now();
+      if (data.status !== "done" && previous?.status === "done")
+        data.completed_at = null;
+    }
+    if (resource === "projects" && "stage" in data) {
+      if (data.stage === "Completed" && previous?.stage !== "Completed")
+        data.completed_at = now();
+      if (data.stage !== "Completed" && previous?.stage === "Completed")
+        data.completed_at = null;
+    }
+    const uniqueField = { daily_notes: "day", weekly_reviews: "week_start" }[
+      resource
+    ];
+    if (
+      uniqueField &&
+      state.data[resource].some(
+        (item) =>
+          item.id !== previous?.id &&
+          item[uniqueField] === combined[uniqueField],
+      )
+    )
+      fail("A record for that date already exists.", 409);
+    return data;
+  }
+  function planDay() {
+    const { data } = state;
+    const today = dateInZone(data.settings.timezone);
+    if (!data.settings.auto_plan || state.generatedDays.includes(today)) return;
+    let templates = [];
+    try {
+      templates = JSON.parse(data.settings.daily_templates);
+    } catch {
+      /* Leave the day empty. */
+    }
+    const cycle = data.cycles.find((item) => item.month === today.slice(0, 7));
+    if (Array.isArray(templates))
+      templates.forEach((template, index) => {
+        if (!template?.title) return;
+        data.tasks.push(
+          row("tasks", {
+            title: template.title,
+            category: template.category || "Personal",
+            priority: template.priority || "medium",
+            estimated_minutes: template.estimated_minutes || 0,
+            due_date: today,
+            cycle_id: cycle?.id || null,
+            sort_order: index,
+          }),
+        );
+      });
+    state.generatedDays.push(today);
+    save();
+  }
+  function addSessionPlan(session) {
+    [
+      "Choose the topic and central question",
+      "Confirm the guest",
+      "Prepare the promotional assets",
+      "Share the announcement and reminders",
+      "Collect audience questions",
+      "Prepare the live session",
+      "Save the recording and transcript",
+      "Review and approve the article or summary",
+      "Share the replay and lessons",
+    ].forEach((title, index) =>
+      state.data.session_checklists.push(
+        row("session_checklists", {
+          session_id: session.id,
+          title,
+          sort_order: index,
+        }),
+      ),
+    );
+    [
+      "Prepare promotion",
+      "Plan the session",
+      "Review the post-session editorial",
+    ].forEach((title, index) =>
+      state.data.tasks.push(
+        row("tasks", {
+          cycle_id: session.cycle_id,
+          session_id: session.id,
+          title: `${title}: ${session.title}`,
+          category: "Next Chapter",
+          priority: "medium",
+          due_date: session.session_date,
+          sort_order: 100 + index,
+        }),
+      ),
+    );
+  }
+  function rollover(body) {
+    const source = state.data.cycles.find(
+      (item) => item.id === body.source_cycle_id,
+    );
+    if (!source) fail("Source cycle not found.", 404);
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(body.month || ""))
+      fail("Choose a valid month.");
+    if (state.data.cycles.some((item) => item.month === body.month))
+      fail(
+        "A cycle for that month already exists. Select it from the cycle menu.",
+        409,
+      );
+    const fields = [
+      "month",
+      "theme",
+      "objective",
+      "objectives",
+      "sales_target",
+      "revenue_target",
+      "outreach_target",
+      "projects_target",
+      "chapter_content_target",
+      "course_days",
+      "session_day",
+    ];
+    const cycle = row(
+      "cycles",
+      Object.fromEntries(fields.map((key) => [key, body[key]])),
+    );
+    state.data.cycles.forEach((item) => {
+      if (item.status === "active") {
+        item.status = "archived";
+        item.updated_at = now();
+      }
+    });
+    state.data.cycles.push(cycle);
+    if (body.carry_tasks) {
+      const tasks = state.data.tasks.filter(
+        (task) =>
+          task.cycle_id === source.id &&
+          ["todo", "in_progress", "deferred"].includes(task.status),
+      );
+      tasks.forEach((task) => {
+        const first = `${cycle.month}-01`;
+        state.data.tasks.push(
+          row("tasks", {
+            ...task,
+            id: id(),
+            cycle_id: cycle.id,
+            carried_from_id: task.id,
+            status: "todo",
+            completed_at: null,
+            due_date:
+              task.due_date && task.due_date >= first ? task.due_date : first,
+          }),
+        );
+        task.status = "carried";
+        task.updated_at = now();
+      });
+    }
+    save();
+    return cycle;
+  }
+  function remove(resource, itemId) {
+    if (["cycles", "products"].includes(resource))
+      fail("Archive this record instead to preserve history.");
+    const index = state.data[resource].findIndex((item) => item.id === itemId);
+    if (index < 0) fail("Record not found.", 404);
+    state.data[resource].splice(index, 1);
+    if (resource === "prospects")
+      state.data.interactions = state.data.interactions.filter(
+        (item) => item.prospect_id !== itemId,
+      );
+    if (resource === "chapter_sessions") {
+      state.data.session_checklists = state.data.session_checklists.filter(
+        (item) => item.session_id !== itemId,
+      );
+      state.data.tasks.forEach((item) => {
+        if (item.session_id === itemId) item.session_id = null;
+      });
+      state.data.content_items.forEach((item) => {
+        if (item.session_id === itemId) item.session_id = null;
+      });
+    }
+    if (resource === "projects") {
+      state.data.tasks.forEach((item) => {
+        if (item.project_id === itemId) item.project_id = null;
+      });
+      state.data.content_items.forEach((item) => {
+        if (item.project_id === itemId) item.project_id = null;
+      });
+    }
+    if (resource === "tasks")
+      state.data.tasks.forEach((item) => {
+        if (item.carried_from_id === itemId) item.carried_from_id = null;
+      });
+    save();
+  }
+  window.fetch = async (input, options = {}) => {
+    if (typeof input !== "string" || !input.startsWith("/api"))
+      return originalFetch(input, options);
+    const path = input.slice(4);
+    const method = (options.method || "GET").toUpperCase();
+    try {
+      const body = options.body ? JSON.parse(options.body) : {};
+      if (path === "/auth/status")
+        return output({
+          authenticated: !state.signedOut,
+          needsSetup: false,
+          previewEnabled: true,
+          csrfToken: state.signedOut ? null : "local-demo",
+          email: state.signedOut ? null : "preview@momentum.local",
+        });
+      if (path === "/auth/preview" && method === "POST") {
+        state.signedOut = false;
+        save();
+        return output({ csrfToken: "local-demo", previewToken: "local-demo" });
+      }
+      if (path === "/auth/login" || path === "/auth/register")
+        fail(
+          "This preview has no account. Choose Open sandbox preview instead.",
+        );
+      if (path === "/auth/logout" && method === "POST") {
+        state.signedOut = true;
+        save();
+        return output({ ok: true });
+      }
+      if (state.signedOut) fail("Open the demo preview to continue.", 401);
+      if (path === "/bootstrap" && method === "GET") {
+        planDay();
+        return output(state.data);
+      }
+      if (path === "/export" && method === "GET")
+        return output({
+          format: "momentum-os-export",
+          version: 1,
+          exported_at: now(),
+          data: state.data,
+        });
+      if (path === "/settings" && method === "PATCH") {
+        const combined = { ...state.data.settings, ...body };
+        if (combined.work_start >= combined.work_end)
+          fail("Workday end must be after its start.");
+        try {
+          new Intl.DateTimeFormat("en", { timeZone: combined.timezone });
+        } catch {
+          fail("Choose a valid timezone.");
+        }
+        Object.assign(state.data.settings, body, { updated_at: now() });
+        save();
+        return output(state.data.settings);
+      }
+      if (path === "/cycles/rollover" && method === "POST")
+        return output(rollover(body), 201);
+      const parts = path.split("/").filter(Boolean);
+      const resource = parts[0];
+      const itemId = parts[1];
+      if (!Object.prototype.hasOwnProperty.call(defaults, resource))
+        fail("Resource not found.", 404);
+      if (method === "POST" && !itemId) {
+        if (resource === "cycles") fail("Create a new cycle using rollover.");
+        const data = check(resource, body);
+        const item = row(resource, data);
+        state.data[resource].push(item);
+        if (resource === "chapter_sessions") addSessionPlan(item);
+        save();
+        return output(item, 201);
+      }
+      if (method === "PATCH" && itemId) {
+        const existing = state.data[resource].find(
+          (item) => item.id === itemId,
+        );
+        if (!existing) fail("Record not found.", 404);
+        if (resource === "cycles" && ("month" in body || "status" in body))
+          fail("Create a new cycle instead of changing its month or status.");
+        Object.assign(existing, check(resource, body, existing), {
+          updated_at: now(),
+        });
+        save();
+        return output(existing);
+      }
+      if (method === "DELETE" && itemId) {
+        remove(resource, itemId);
+        return output({ ok: true });
+      }
+      fail("This action is not available in the demo.", 404);
+    } catch (error) {
+      return output(
+        { error: error?.message || "Unable to complete that request." },
+        error?.status || 400,
+      );
+    }
+  };
+})();

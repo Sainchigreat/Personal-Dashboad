@@ -9,8 +9,9 @@
     "build": "tsc --noEmit && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "test": "vitest run",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"server/**/*.ts\" \"tests/**/*.ts\" \"*.{json,md,html,ts}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"server/**/*.ts\" \"tests/**/*.ts\" \"*.{json,md,html,ts}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"server/**/*.ts\" \"scripts/**/*.{ts,js}\" \"tests/**/*.ts\" \"*.{json,md,html,ts}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"server/**/*.ts\" \"scripts/**/*.{ts,js}\" \"tests/**/*.ts\" \"*.{json,md,html,ts}\"",
+    "build:preview": "npm run build && tsx scripts/build-preview.ts"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.5",

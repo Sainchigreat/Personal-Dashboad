@@ -48,6 +48,17 @@ npm run dev:preview
 
 Preview uses a separate `data/preview` database and opens automatically. **Anyone with access to a preview URL can access its preview data. Do not use real private information in preview mode.** Preview mode is disabled when `NODE_ENV=production`; it is not a production authentication mechanism.
 
+### Browser-only visual demo
+
+To make a portable preview that opens directly in Chrome without running a server:
+
+```bash
+npm run build:preview
+# Open preview-dist/index.html in your browser.
+```
+
+This demo is generated from a fresh set of default settings, not from your database. It runs the same interface with a browser-only demo adapter: changes remain in that browser's local storage, are not synced to the real application, and may be lost when browser data is cleared. **It has no private account or secure backend; do not use it for sensitive information.** The authenticated SQLite application remains the real system of record. The generated `preview/index.html` checked into this public repository is this demo only and never contains private SQLite data. Rebuild it with `npm run build:preview` and copy `preview-dist/index.html` to `preview/index.html` before publishing an updated preview.
+
 ```bash
 npm test          # business rules, authentication, persistence, and rollover
 npm run build     # type-check and build the client
