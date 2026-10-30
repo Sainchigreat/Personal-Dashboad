@@ -14,7 +14,7 @@ import {
   db,
   id,
   now,
-  createWorkspace,
+  createWorkspace,\n  createTeamOwnerWorkspace,
   ensureDailyPlan,
   dateInZone,
 } from "./db";
@@ -159,36 +159,39 @@ app.get("/api/auth/status", (req, res) => {
 });
 app.post("/api/auth/register", authThrottle, async (req, res, next) => {
   try {
-    const input = z
-      .object({
-        name: z.string().trim().min(1).max(100),
-        email: z.string().trim().email().max(254),
-        password: z.string().min(12).max(200),
-      })
-      .strict()
-      .parse(req.body);
-    const count = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
-      count: number;
-    };
-    if (count.count > 0)
-      return res
-        .status(403)
-        .json({ error: "This private workspace has already been set up." });
+    const input = z.object({
+      name: z.string().trim().min(1).max(100),
+      email: z.string().trim().email().max(254),
+      password: z.string().min(12).max(200),
+      inviteToken: z.string().min(20).max(100).optional(),
+    }).strict().parse(req.body);
+    const count = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {count:number};
+    const email = input.email.toLowerCase();
+    let invite: {id:string;workspace_id:string;role:"manager"|"member";email:string}|undefined;
+    if (count.count === 0) {
+      if (input.inviteToken) return res.status(400).json({error:"An invitation is not needed for the first owner account."});
+    } else {
+      if (!input.inviteToken) return res.status(403).json({error:"Momentum OS is invite-only. Ask the workspace owner for an invitation."});
+      invite = db.prepare("SELECT id,workspace_id,role,email FROM team_invites WHERE token_hash=? AND expires_at>? AND accepted_at IS NULL")
+        .get(hash(input.inviteToken),Date.now()) as typeof invite;
+      if (!invite || invite.email.toLowerCase() !== email) return res.status(403).json({error:"This invitation is invalid, expired, or addressed to another email."});
+    }
+    if (db.prepare("SELECT 1 FROM users WHERE email=?").get(email)) return res.status(409).json({error:"An account with this email already exists. Please sign in."});
     const userId = id();
-    const passwordHash = await bcrypt.hash(input.password, 12);
-    // Recheck after the asynchronous hash; only one owner is allowed.
-    const afterHash = db
-      .prepare("SELECT COUNT(*) AS count FROM users")
-      .get() as { count: number };
-    if (afterHash.count > 0)
-      return res
-        .status(403)
-        .json({ error: "This private workspace has already been set up." });
-    createWorkspace(userId, input.email, passwordHash, input.name);
-    res.json({ csrfToken: setSession(res, userId).csrfToken });
-  } catch (error) {
-    next(error);
-  }
+    const passwordHash = await bcrypt.hash(input.password,12);
+    const afterHash = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {count:number};
+    if (count.count === 0 && afterHash.count > 0) return res.status(409).json({error:"Initial setup was completed by another request. Please sign in."});
+    createWorkspace(userId,email,passwordHash,input.name);
+    if (invite) {
+      const stamp=now();
+      db.prepare("INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,?,'active',?)")
+        .run(id(),invite.workspace_id,userId,invite.role,stamp);
+      db.prepare("UPDATE team_invites SET accepted_at=? WHERE id=?").run(stamp,invite.id);
+    } else {
+      createTeamOwnerWorkspace(userId);
+    }
+    res.json({csrfToken:setSession(res,userId).csrfToken});
+  } catch(error) { next(error); }
 });
 app.post("/api/auth/login", authThrottle, async (req, res, next) => {
   try {
@@ -673,7 +676,7 @@ app.delete("/api/:resource/:id", requireUser, (req, res, next) => {
   }
 });
 
-app.use("/api", (_req, res) => res.status(404).json({ error: "Not found." }));
+app.use("/api/team", requireUser, teamRouter);\napp.use("/api", (_req, res) => res.status(404).json({ error: "Not found." }));
 if (process.env.NODE_ENV === "production") {
   const dist = resolve(process.cwd(), "dist");
   if (existsSync(dist)) {
