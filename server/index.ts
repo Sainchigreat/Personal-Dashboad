@@ -14,7 +14,8 @@ import {
   db,
   id,
   now,
-  createWorkspace,\n  createTeamOwnerWorkspace,
+  createWorkspace,
+  createTeamOwnerWorkspace,
   ensureDailyPlan,
   dateInZone,
 } from "./db";
@@ -676,7 +677,8 @@ app.delete("/api/:resource/:id", requireUser, (req, res, next) => {
   }
 });
 
-app.use("/api/team", requireUser, teamRouter);\napp.use("/api", (_req, res) => res.status(404).json({ error: "Not found." }));
+app.use("/api/team", requireUser, teamRouter);
+app.use("/api", (_req, res) => res.status(404).json({ error: "Not found." }));
 if (process.env.NODE_ENV === "production") {
   const dist = resolve(process.cwd(), "dist");
   if (existsSync(dist)) {
