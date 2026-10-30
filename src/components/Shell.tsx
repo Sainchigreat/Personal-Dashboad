@@ -37,6 +37,7 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
       { page: "command", label: "Command Centre", icon: LayoutGrid },
       { page: "day", label: "My Day", icon: CheckSquare2 },
       { page: "review", label: "Weekly Review", icon: BarChart3 },
+      { page: "team", label: "Team Workspace", icon: UsersRound },
     ],
   },
   {
