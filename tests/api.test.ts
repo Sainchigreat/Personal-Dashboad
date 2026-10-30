@@ -260,9 +260,18 @@ describe("private persistent workspace API", () => {
     expect(
       data.session_checklists.filter((c: any) => c.session_id === sessionId),
     ).toHaveLength(9);
-    const sessionTasks = data.tasks.filter((t: any) => t.session_id === sessionId);
-    expect(sessionTasks).toHaveLength(4);
-    expect(sessionTasks.some((task: any) => task.title.includes("Next Chapter"))).toBe(true);
+    const sessionTasks = data.tasks.filter(
+      (t: any) => t.session_id === sessionId,
+    );
+    // The three session tasks are always created. A separate guest reminder
+    // may also be present when the session happens to be exactly a week away.
+    for (const title of [
+      "Prepare promotion: Future of creativity",
+      "Plan the session: Future of creativity",
+      "Review the post-session editorial: Future of creativity",
+    ]) {
+      expect(sessionTasks.some((task: any) => task.title === title)).toBe(true);
+    }
     const rejected = await request("POST", "/content_items", {
       title: "AI session article",
       project_id: project.body.id,
