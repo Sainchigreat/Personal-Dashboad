@@ -11,6 +11,7 @@ import Brand from "./pages/Brand";
 import Pipeline from "./pages/Pipeline";
 import Review from "./pages/Review";
 import Settings from "./pages/Settings";
+import TeamWorkspace from "./pages/TeamWorkspace";
 
 function Workspace() {
   const { page } = useApp();
@@ -24,6 +25,7 @@ function Workspace() {
     pipeline: <Pipeline />,
     review: <Review />,
     settings: <Settings />,
+    team: <TeamWorkspace />,
   };
   return (
     <>
