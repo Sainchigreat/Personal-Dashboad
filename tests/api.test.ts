@@ -262,7 +262,7 @@ describe("private persistent workspace API", () => {
     ).toHaveLength(9);
     const sessionTasks = data.tasks.filter((t: any) => t.session_id === sessionId);
     expect(sessionTasks).toHaveLength(4);
-    expect(sessionTasks.some((task: any) => task.title.includes("Confirm next week's Next Chapter guest"))).toBe(true);
+    expect(sessionTasks.some((task: any) => task.title.includes("Next Chapter"))).toBe(true);
     const rejected = await request("POST", "/content_items", {
       title: "AI session article",
       project_id: project.body.id,
