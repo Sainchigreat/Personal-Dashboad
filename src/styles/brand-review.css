@@ -5,21 +5,21 @@
   gap: 27px;
   padding: 24px;
   margin-bottom: 18px;
-  border: 1px solid #353a5a;
+  border: 1px solid var(--border-light);
   border-radius: 10px;
-  background: linear-gradient(110deg, #222841, #1a2133);
+  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
 }
 .content-overview-copy {
   flex: 1;
 }
 .content-overview h2 {
-  color: #eef1ff;
+  color: var(--text);
   font-size: 17px;
   font-weight: 600;
   margin: 7px 0 5px;
 }
 .content-overview p {
-  color: #a7b0c7;
+  color: var(--muted);
   font-size: 10px;
 }
 .content-count {
@@ -27,14 +27,14 @@
   align-items: center;
   gap: 8px;
   padding-left: 22px;
-  border-left: 1px solid #46506a;
+  border-left: 1px solid var(--border-light);
 }
 .content-count strong {
-  color: #e7eafd;
+  color: var(--text);
   font: 600 24px "DM Sans";
 }
 .content-count span {
-  color: #9eabc2;
+  color: var(--muted);
   font-size: 9px;
   line-height: 1.5;
 }
@@ -44,8 +44,8 @@
   width: 48px;
   height: 48px;
   border-radius: 13px;
-  color: #c0b7ff;
-  background: #9d90e723;
+  color: var(--accent);
+  background: #aae7ce23;
 }
 .content-list {
   overflow: hidden;
@@ -70,22 +70,22 @@
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #8a73c32b;
-  color: #d0b1ed;
+  background: #8bc3ac2b;
+  color: var(--text);
   font-size: 11px;
   font-weight: 700;
 }
 .platform-linkedin {
-  background: #4f82ba2a;
-  color: #8ebee9;
+  background: #6fba9b2a;
+  color: var(--accent);
 }
 .platform-youtube {
-  background: #b46d722a;
-  color: #e6a0a7;
+  background: #82b49f2a;
+  color: var(--accent);
 }
 .platform-whatsapp {
-  background: #6dbb982a;
-  color: #90d4b5;
+  background: #84bba42a;
+  color: var(--accent);
 }
 .content-main {
   min-width: 0;
@@ -107,7 +107,7 @@
   font-weight: 600;
 }
 .content-main:hover strong {
-  color: var(--blue);
+  color: var(--accent);
 }
 .content-main small {
   color: var(--muted);
@@ -138,10 +138,10 @@
   border-bottom: 1px solid var(--border);
   padding: 9px 0;
   font-size: 10px;
-  color: #bdc7d7;
+  color: var(--muted);
 }
 .pillar-list > div > span {
-  color: #9586c7;
+  color: var(--accent);
   font-size: 9px;
 }
 .cadence-row {
@@ -163,18 +163,18 @@
   justify-content: space-between;
   align-items: center;
   padding: 21px 23px;
-  border: 1px solid #34415b;
+  border: 1px solid var(--border-light);
   border-radius: 9px;
-  background: linear-gradient(110deg, #1e2b42, #1b2233);
+  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
 }
 .review-intro h2 {
-  color: #eef2ff;
+  color: var(--text);
   font-size: 17px;
   font-weight: 600;
   margin: 6px 0 4px;
 }
 .review-intro p {
-  color: #a2aec5;
+  color: var(--muted);
   font-size: 10px;
 }
 .review-intro-icon {
@@ -183,8 +183,8 @@
   width: 44px;
   height: 44px;
   border-radius: 11px;
-  color: #a9bcff;
-  background: #7d99ff1d;
+  color: var(--accent);
+  background: #a4ffd91d;
 }
 .review-stats {
   display: grid;
@@ -256,17 +256,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #bfc9d7;
+  color: var(--muted);
   font-size: 10px;
   margin-top: 10px;
 }
 .review-task svg {
-  color: #73c6a9;
+  color: var(--accent);
 }
 .hollow-dot {
   width: 13px;
   height: 13px;
-  border: 1px solid #808da2;
+  border: 1px solid var(--border-light);
   border-radius: 50%;
   flex: none;
 }

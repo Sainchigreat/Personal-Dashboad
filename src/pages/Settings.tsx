@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api } from "../lib/api";
+import type { ThemePreference } from "../types";
 import { asRecord, useApp } from "../lib/store";
 import { displayMonth } from "../lib/date";
 import { currency } from "../lib/metrics";
@@ -247,13 +248,18 @@ export default function Settings() {
                       onChange={(e) =>
                         setValues({
                           ...values,
-                          theme: e.target.value as "dark" | "light",
+                          theme: e.target.value as ThemePreference,
                         })
                       }
                     >
-                      <option value="dark">Dark</option>
+                      <option value="system">Use device setting</option>
                       <option value="light">Light</option>
+                      <option value="dark">Dark</option>
                     </select>
+                    <small>
+                      Automatically follows your phone or computer, or choose a
+                      fixed appearance.
+                    </small>
                   </label>
                 </div>
               </section>
@@ -360,7 +366,7 @@ export default function Settings() {
           </div>
           <aside className="module-aside">
             <section className="panel side-panel">
-              <div className="side-panel-icon blue">
+              <div className="side-panel-icon accent">
                 <Sparkles size={18} />
               </div>
               <span className="overline">YOUR SYSTEM, YOUR RULES</span>
@@ -486,7 +492,7 @@ export default function Settings() {
           </div>
           <aside className="module-aside">
             <section className="panel side-panel">
-              <div className="side-panel-icon blue">
+              <div className="side-panel-icon accent">
                 <Database size={18} />
               </div>
               <span className="overline">HISTORY IS NEVER RESET</span>
@@ -546,7 +552,7 @@ export default function Settings() {
                     key={product.id}
                     onClick={() => openForm("product", asRecord(product))}
                   >
-                    <span className="record-icon blue">
+                    <span className="record-icon accent">
                       <CircleDollarSign size={17} />
                     </span>
                     <span>
@@ -570,7 +576,7 @@ export default function Settings() {
                 sub="Keep a portable copy of your workspace."
               />
               <div className="data-export">
-                <span className="side-panel-icon blue">
+                <span className="side-panel-icon accent">
                   <Download size={18} />
                 </span>
                 <span>

@@ -67,7 +67,7 @@ const quickActions: Array<{
     label: "Add a task",
     description: "Make a plan",
     icon: CheckSquare2,
-    tone: "blue",
+    tone: "accent",
   },
   {
     name: "sale",
@@ -81,28 +81,28 @@ const quickActions: Array<{
     label: "Add a prospect",
     description: "Grow your network",
     icon: BriefcaseBusiness,
-    tone: "purple",
+    tone: "secondary",
   },
   {
     name: "project",
     label: "Create a project",
     description: "Start something new",
     icon: Clapperboard,
-    tone: "orange",
+    tone: "highlight",
   },
   {
     name: "content",
     label: "Capture an idea",
     description: "Plan your content",
     icon: PenLine,
-    tone: "purple",
+    tone: "secondary",
   },
   {
     name: "session",
     label: "Plan a session",
     description: "Make a conversation happen",
     icon: Radio,
-    tone: "blue",
+    tone: "accent",
   },
 ];
 

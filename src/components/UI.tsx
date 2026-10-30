@@ -142,7 +142,7 @@ export function TextLink({
 export function Progress({
   value,
   className = "",
-  color = "blue",
+  color = "accent",
 }: {
   value: number;
   className?: string;
@@ -205,7 +205,7 @@ export function Status({ value }: { value: string }) {
       ? "amber"
       : ["refunded", "lost", "cancelled", "not interested"].includes(lower)
         ? "muted"
-        : "blue";
+        : "accent";
   return (
     <Pill tone={tone} dot>
       {value.replaceAll("_", " ")}
@@ -342,7 +342,7 @@ export function Modal({
 }
 export function MetricCard({
   icon: Icon,
-  iconTone = "blue",
+  iconTone = "accent",
   label,
   value,
   detail,

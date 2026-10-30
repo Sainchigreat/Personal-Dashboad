@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS settings (
   timezone TEXT NOT NULL DEFAULT 'Africa/Lagos',
   work_start TEXT NOT NULL DEFAULT '08:00',
   work_end TEXT NOT NULL DEFAULT '17:00',
-  theme TEXT NOT NULL DEFAULT 'dark',
+  theme TEXT NOT NULL DEFAULT 'system',
   platforms TEXT NOT NULL DEFAULT 'Instagram,LinkedIn,YouTube,WhatsApp',
   notifications_enabled INTEGER NOT NULL DEFAULT 1,
   auto_plan INTEGER NOT NULL DEFAULT 1,

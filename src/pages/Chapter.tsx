@@ -130,7 +130,7 @@ export default function Chapter() {
       </div>
       <div className="chapter-stats">
         <div>
-          <span className="chapter-stat-icon blue">
+          <span className="chapter-stat-icon accent">
             <CalendarDays size={17} />
           </span>
           <span>
@@ -139,7 +139,7 @@ export default function Chapter() {
           </span>
         </div>
         <div>
-          <span className="chapter-stat-icon purple">
+          <span className="chapter-stat-icon secondary">
             <Mic2 size={17} />
           </span>
           <span>
@@ -291,7 +291,7 @@ export default function Chapter() {
                   title="Session checklist"
                   sub="A flexible path from planning to post-session."
                   action={
-                    <Pill tone="blue">
+                    <Pill tone="accent">
                       {completed} / {checklist.length}
                     </Pill>
                   }
@@ -317,7 +317,7 @@ export default function Chapter() {
         </div>
         <aside className="module-aside">
           <section className="panel side-panel">
-            <div className="side-panel-icon purple">
+            <div className="side-panel-icon secondary">
               <FileText size={18} />
             </div>
             <span className="overline">EDITORIAL WORKFLOW</span>

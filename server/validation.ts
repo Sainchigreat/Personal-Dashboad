@@ -315,7 +315,7 @@ export const settingsSchema = z
     }, "Enter a valid IANA time zone."),
     work_start: time.refine(Boolean, "Start time is required."),
     work_end: time.refine(Boolean, "End time is required."),
-    theme: z.enum(["dark", "light"]),
+    theme: z.enum(["system", "dark", "light"]),
     platforms: z
       .string()
       .max(1000)

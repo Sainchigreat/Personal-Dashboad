@@ -20,8 +20,8 @@
   width: 37px;
   height: 37px;
   border-radius: 8px;
-  color: #9fb3ff;
-  background: #7693fc1c;
+  color: var(--accent);
+  background: #9efcd51c;
 }
 .day-date strong,
 .day-date span:not(.day-date-icon) {
@@ -50,9 +50,9 @@
   font-size: 10px;
 }
 .day-nav > button.current {
-  color: var(--blue);
-  background: #6a8cf719;
-  border-color: #7897ff2b;
+  color: var(--accent);
+  background: #94f7ce19;
+  border-color: #a1ffd82b;
 }
 .day-layout {
   display: grid;
@@ -78,17 +78,17 @@
   justify-content: space-between;
   gap: 15px;
   padding: 21px;
-  background: linear-gradient(110deg, #1b2a46, #182136);
-  border-color: #2e3e5c;
+  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  border-color: var(--border-light);
 }
 .day-progress-card h2 {
   margin-top: 7px;
-  color: #f0f3ff;
+  color: var(--text);
   font-size: 16px;
   font-weight: 600;
 }
 .day-progress-card p {
-  color: #9daecc;
+  color: var(--muted);
   font-size: 10px;
   margin-top: 5px;
 }
@@ -100,14 +100,14 @@
 }
 .day-progress-right strong {
   display: block;
-  color: #fff;
+  color: var(--text);
   font: 600 23px "DM Sans";
   text-align: right;
   margin-bottom: 8px;
 }
 .day-progress-right small {
   font-size: 12px;
-  color: #a3b5d8;
+  color: var(--muted);
 }
 .task-panel {
   padding: 20px 20px 0;
@@ -146,7 +146,7 @@
   font-weight: 600;
 }
 .day-task-main:hover strong {
-  color: var(--blue);
+  color: var(--accent);
 }
 .day-task-main > span {
   font-size: 10px;
@@ -163,18 +163,18 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7e9bff;
+  background: var(--accent);
   margin-right: 5px;
   vertical-align: 1px;
 }
 .category-dot.green {
-  background: #75c8ae;
+  background: var(--accent);
 }
-.category-dot.orange {
-  background: #dba575;
+.category-dot.highlight {
+  background: var(--accent);
 }
-.category-dot.purple {
-  background: #a78fe8;
+.category-dot.secondary {
+  background: var(--accent);
 }
 .day-task.is-done .day-task-main strong {
   text-decoration: line-through;
@@ -207,7 +207,7 @@
   gap: 5px;
   border: 0;
   background: none;
-  color: var(--blue);
+  color: var(--accent);
   font-size: 10px;
   font-weight: 600;
 }
@@ -258,7 +258,7 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  color: #b8c1d0;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 600;
 }
@@ -288,8 +288,8 @@
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  color: #98afff;
-  background: #6c8cff1c;
+  color: var(--accent);
+  background: #98ffd41c;
   margin-bottom: 17px;
 }
 .time-card h2,
@@ -326,7 +326,7 @@
   margin-top: 10px;
 }
 .time-card p.time-warning {
-  color: #dbb685;
+  color: var(--accent);
   margin-top: 15px;
 }
 .schedule-list {
@@ -342,11 +342,11 @@
   text-align: left;
 }
 .schedule-list > button > span {
-  color: #8497c0;
+  color: var(--accent);
   font-size: 10px;
 }
 .schedule-list > button > div {
-  border-left: 2px solid #7797ff;
+  border-left: 2px solid var(--accent);
   padding-left: 10px;
 }
 .schedule-list strong,
@@ -377,20 +377,20 @@
 }
 .day-quote {
   padding: 20px;
-  border: 1px solid #353653;
+  border: 1px solid var(--border-light);
   border-radius: 9px;
-  background: #1c1d31;
+  background: var(--surface-2);
 }
 .day-quote > span {
-  color: #aea0ec;
+  color: var(--accent);
 }
 .day-quote p {
-  color: #dbd9eb;
+  color: var(--text);
   font: 500 13px/1.55 "DM Sans";
   margin: 10px 0;
 }
 .day-quote small {
-  color: #928aad;
+  color: var(--muted);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.1em;

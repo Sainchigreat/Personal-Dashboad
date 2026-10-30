@@ -112,7 +112,7 @@ export default function Course() {
           }
           detail={`${metrics.salesRemaining} more to reach your target`}
           progress={percentage(metrics.sales, cycle.sales_target)}
-          iconTone="blue"
+          iconTone="accent"
         />
         <MetricCard
           icon={TrendingUp}
@@ -127,7 +127,7 @@ export default function Course() {
           label="Enquiries"
           value={leads.length}
           detail="Recorded this cycle"
-          iconTone="purple"
+          iconTone="secondary"
         />
         <MetricCard
           icon={Target}
@@ -138,7 +138,7 @@ export default function Course() {
               : "—"
           }
           detail={`${converted} converted enquiries`}
-          iconTone="orange"
+          iconTone="highlight"
         />
       </div>
       <div className="module-layout">
@@ -176,7 +176,7 @@ export default function Course() {
                     key={sale.id}
                     onClick={() => openForm("sale", asRecord(sale))}
                   >
-                    <span className="record-icon blue">
+                    <span className="record-icon accent">
                       <BadgeDollarSign size={17} />
                     </span>
                     <span className="record-main">
@@ -220,7 +220,7 @@ export default function Course() {
                     key={lead.id}
                     onClick={() => openForm("lead", asRecord(lead))}
                   >
-                    <span className="record-icon purple">
+                    <span className="record-icon secondary">
                       <MessageCircle size={17} />
                     </span>
                     <span className="record-main">
@@ -261,7 +261,7 @@ export default function Course() {
                     key={item.id}
                     onClick={() => openForm("campaign", asRecord(item))}
                   >
-                    <span className="record-icon orange">
+                    <span className="record-icon highlight">
                       <Megaphone size={17} />
                     </span>
                     <span className="record-main">

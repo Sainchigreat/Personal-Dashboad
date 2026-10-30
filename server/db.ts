@@ -32,6 +32,16 @@ if (!settingsColumns.includes("notifications_enabled"))
   db.exec(
     "ALTER TABLE settings ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 1",
   );
+// Earlier versions seeded dark as the default. Follow the device for untouched
+// defaults, while keeping light/dark preferences that an owner has saved.
+const themeColumn = db
+  .prepare("PRAGMA table_info(settings)")
+  .all()
+  .find((column) => column.name === "theme");
+if (themeColumn?.dflt_value === "'dark'")
+  db.prepare(
+    "UPDATE settings SET theme='system' WHERE theme='dark' AND updated_at=created_at",
+  ).run();
 
 export const id = () => randomUUID();
 export const now = () => new Date().toISOString();
@@ -109,7 +119,7 @@ export function createWorkspace(
       "Africa/Lagos",
       "08:00",
       "17:00",
-      "dark",
+      "system",
       1,
       JSON.stringify(defaultTemplates),
       stamp,

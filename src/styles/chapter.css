@@ -1,23 +1,23 @@
 /* Next Chapter */
 .chapter-banner {
   min-height: 170px;
-  background: linear-gradient(110deg, #28243e, #1d2035);
-  border-color: #3a3653;
+  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
+  border-color: var(--border-light);
 }
 .chapter-banner .banner-kicker {
-  color: #b3a5e6;
+  color: var(--accent);
 }
 .chapter-banner .banner-kicker span {
-  background: #aa99ed;
+  background: var(--accent);
 }
 .chapter-banner h2 {
   line-height: 1.25;
 }
 .chapter-banner h2 span {
-  color: #baaaf4;
+  color: var(--accent);
 }
 .chapter-banner p {
-  color: #aaa8c2;
+  color: var(--muted);
 }
 .audio-art {
   position: absolute;
@@ -32,7 +32,7 @@
 .audio-art span {
   width: 3px;
   height: 16px;
-  background: #aa9bea;
+  background: var(--accent);
   border-radius: 5px;
 }
 .audio-art span:nth-child(4n + 1) {
@@ -67,6 +67,10 @@
   flex: 1;
   min-width: 0;
 }
+.chapter-stats > div > span:not(.chapter-stat-icon) {
+  flex: 1;
+  min-width: 0;
+}
 .chapter-stat-icon {
   width: 32px;
   height: 32px;
@@ -74,16 +78,16 @@
   border-radius: 8px;
   display: grid;
   place-items: center;
-  color: #9cb3ff;
-  background: #708eff1b;
+  color: var(--accent);
+  background: #9bffd51b;
 }
-.chapter-stat-icon.purple {
-  color: #b9a8ef;
-  background: #a998ef1b;
+.chapter-stat-icon.secondary {
+  color: var(--accent);
+  background: #b1efd51b;
 }
 .chapter-stat-icon.green {
-  color: #82ceb8;
-  background: #63cba71b;
+  color: var(--accent);
+  background: #82cbad1b;
 }
 .chapter-stats small,
 .chapter-stats strong {
@@ -108,7 +112,7 @@
   gap: 4px;
   border: 0;
   background: none;
-  color: var(--blue);
+  color: var(--accent);
   font-size: 10px;
   white-space: nowrap;
 }
@@ -140,7 +144,7 @@
   background: transparent;
 }
 .session-tabs > button.selected {
-  background: #6c8af60d;
+  background: #95f6ce0d;
 }
 .session-tabs > button > span:nth-child(2) {
   min-width: 0;
@@ -167,8 +171,8 @@
   display: grid;
   place-items: center;
   border-radius: 7px;
-  background: #7c90df18;
-  color: #adc0ff;
+  background: #9adfc218;
+  color: var(--accent);
 }
 .session-tab-date strong {
   font-size: 12px;
@@ -230,7 +234,7 @@
   align-items: center;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
-  color: #c5cedd;
+  color: var(--muted);
   font-size: 11px;
 }
 .checklist > div:last-child {
@@ -254,13 +258,13 @@
   width: 21px;
   height: 21px;
   border-radius: 50%;
-  border: 1px solid #766aab;
-  background: #28263e;
-  color: #bdb1e9;
+  border: 1px solid var(--accent);
+  background: var(--surface-3);
+  color: var(--text);
   font-size: 9px;
 }
 .editorial-flow > div strong {
-  color: #c8c8d8;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 500;
 }
@@ -270,21 +274,21 @@
   height: 11px;
   left: 10px;
   top: 20px;
-  background: #635c82;
+  background: var(--accent);
 }
 .approval-note {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   padding: 11px;
-  border: 1px solid #42504d;
+  border: 1px solid var(--border-light);
   border-radius: 7px;
-  color: #b6d4c9;
-  background: #69cba510;
+  color: var(--muted);
+  background: #86cbae10;
   font-size: 10px;
   line-height: 1.6;
 }
 .approval-note svg {
   flex: none;
-  color: #79c6ac;
+  color: var(--accent);
 }

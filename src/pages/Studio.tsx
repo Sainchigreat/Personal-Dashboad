@@ -88,7 +88,7 @@ export default function Studio() {
           </span>
           <Progress
             value={percentage(metrics.projectsDone, cycle.projects_target)}
-            color="orange"
+            color="highlight"
           />
         </div>
         <button onClick={() => openForm("cycle", asRecord(cycle))}>
@@ -148,7 +148,7 @@ export default function Studio() {
                         </button>
                         <Pill
                           tone={
-                            project.priority === "high" ? "blue" : "neutral"
+                            project.priority === "high" ? "accent" : "neutral"
                           }
                         >
                           {project.priority}
@@ -226,7 +226,7 @@ export default function Studio() {
         </section>
         <aside className="module-aside">
           <section className="panel side-panel">
-            <div className="side-panel-icon orange">
+            <div className="side-panel-icon highlight">
               <Layers3 size={18} />
             </div>
             <span className="overline">ONE PROJECT, MANY IDEAS</span>

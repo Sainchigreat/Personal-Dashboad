@@ -2,13 +2,13 @@
 .module-banner {
   position: relative;
   overflow: hidden;
-  border: 1px solid #2e405b;
+  border: 1px solid var(--border-light);
   border-radius: 10px;
   display: flex;
   justify-content: space-between;
   min-height: 157px;
   padding: 23px 25px;
-  background: linear-gradient(110deg, #192c41, #182233);
+  background: linear-gradient(110deg, var(--surface-3), var(--surface-2));
 }
 .module-banner > div:first-child {
   z-index: 2;
@@ -17,7 +17,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #92b6c6;
+  color: var(--muted);
   font-size: 9px;
   letter-spacing: 0.1em;
   font-weight: 700;
@@ -25,17 +25,17 @@
 .banner-kicker span {
   width: 6px;
   height: 6px;
-  background: #6dcbb1;
+  background: var(--accent);
   border-radius: 50%;
 }
 .module-banner h2 {
-  color: #f0f5fc;
+  color: var(--text);
   font-size: 21px;
   margin-top: 9px;
   font-weight: 600;
 }
 .module-banner p {
-  color: #a3b7c9;
+  color: var(--muted);
   font-size: 11px;
   margin-top: 5px;
   max-width: 480px;
@@ -47,7 +47,7 @@
   gap: 5px;
   padding: 0;
   margin-top: 14px;
-  color: #9ed8cb;
+  color: var(--muted);
   background: none;
   border: 0;
   font-size: 10px;
@@ -63,7 +63,7 @@
   place-items: center;
 }
 .banner-art-ring {
-  border: 1px solid #7bc9b71d;
+  border: 1px solid #92c9b21d;
   border-radius: 50%;
   position: absolute;
 }
@@ -78,12 +78,12 @@
 .banner-art > span {
   width: 65px;
   height: 65px;
-  border: 1px solid #88d8c437;
-  background: #75c9b717;
+  border: 1px solid #a0d8c137;
+  background: #8ec9b117;
   border-radius: 18px;
   display: grid;
   place-items: center;
-  color: #a0dbc9;
+  color: var(--muted);
   transform: rotate(-8deg);
 }
 .module-metrics {
@@ -131,20 +131,20 @@
   height: 35px;
   border-radius: 9px;
   flex: none;
-  color: #9aafff;
-  background: #708ef11a;
+  color: var(--accent);
+  background: #97f1cb1a;
 }
 .record-icon.green {
-  color: #7acbb5;
-  background: #60c6a719;
+  color: var(--accent);
+  background: #7fc6a819;
 }
-.record-icon.purple {
-  color: #bdaaf1;
-  background: #a892e91b;
+.record-icon.secondary {
+  color: var(--accent);
+  background: #ace9d01b;
 }
-.record-icon.orange {
-  color: #e6b481;
-  background: #eba96f1b;
+.record-icon.highlight {
+  color: var(--accent);
+  background: #94ebc71b;
 }
 .record-main {
   flex: 1;
@@ -174,7 +174,7 @@
   background: none;
 }
 .record-main-button:hover strong {
-  color: var(--blue);
+  color: var(--accent);
 }
 .record-meta {
   text-align: right;
@@ -196,23 +196,23 @@
   white-space: nowrap;
 }
 .row-action:hover {
-  color: var(--blue);
-  border-color: #6179b6;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .side-panel {
   padding: 20px;
 }
 .side-panel-icon.green {
-  color: #7bd4bb;
-  background: #67cbb019;
+  color: var(--accent);
+  background: #85cbae19;
 }
-.side-panel-icon.purple {
-  color: #bdaaf1;
-  background: #a892ef1c;
+.side-panel-icon.secondary {
+  color: var(--accent);
+  background: #aeefd41c;
 }
-.side-panel-icon.orange {
-  color: #e5b47f;
-  background: #eeb0771a;
+.side-panel-icon.highlight {
+  color: var(--accent);
+  background: #9beecb1a;
 }
 .side-panel .button.wide {
   margin-top: 18px;
@@ -241,14 +241,14 @@
   gap: 5px;
   border: 0;
   background: none;
-  color: var(--blue);
+  color: var(--accent);
   font-size: 10px;
   font-weight: 600;
   padding: 0;
   margin-top: 17px;
 }
 .side-link:hover {
-  color: #adc0ff;
+  color: var(--accent);
 }
 .side-counter {
   display: flex;
@@ -271,10 +271,10 @@
   align-items: flex-start;
   gap: 10px;
   padding: 15px;
-  border: 1px solid #323852;
+  border: 1px solid var(--border-light);
   border-radius: 9px;
-  background: #1a1e30;
-  color: #9fb1e3;
+  background: var(--surface-2);
+  color: var(--accent);
 }
 .side-note > span {
   flex: 1;
@@ -286,10 +286,10 @@
 }
 .side-note strong {
   font-size: 10px;
-  color: #d7def3;
+  color: var(--text);
 }
 .side-note small {
-  color: #9ba8bf;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1.5;
   margin-top: 4px;
@@ -297,13 +297,13 @@
 .side-note button {
   background: none;
   border: 0;
-  color: #a8baff;
+  color: var(--accent);
 }
 .side-note.clickable {
   width: 100%;
 }
 .side-note.clickable:hover {
-  border-color: #6874a3;
+  border-color: var(--accent);
 }
 .rhythm-status {
   display: flex;
@@ -319,12 +319,12 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #a8a079;
-  box-shadow: 0 0 0 4px #c1ad6e19;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px #87c1a919;
 }
 .rhythm-dot.done {
-  background: #75cbae;
-  box-shadow: 0 0 0 4px #6dcbb21b;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px #89cbb01b;
 }
 .rhythm-status strong,
 .rhythm-status small {

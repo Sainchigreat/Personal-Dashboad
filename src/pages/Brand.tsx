@@ -255,7 +255,7 @@ export default function Brand() {
         </section>
         <aside className="module-aside">
           <section className="panel side-panel">
-            <div className="side-panel-icon purple">
+            <div className="side-panel-icon secondary">
               <Sparkles size={18} />
             </div>
             <span className="overline">YOUR CREATIVE PERSPECTIVE</span>

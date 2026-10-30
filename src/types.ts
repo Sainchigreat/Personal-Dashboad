@@ -29,13 +29,15 @@ export interface Base {
   created_at: string;
   updated_at: string;
 }
+export type ThemePreference = "system" | "dark" | "light";
+
 export interface Settings extends Base {
   name: string;
   business_name: string;
   timezone: string;
   work_start: string;
   work_end: string;
-  theme: "dark" | "light";
+  theme: ThemePreference;
   platforms: string;
   notifications_enabled: number;
   auto_plan: number;

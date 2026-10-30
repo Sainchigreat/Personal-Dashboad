@@ -68,14 +68,14 @@ export default function Pipeline() {
       <div className="metrics-grid module-metrics">
         <MetricCard
           icon={Search}
-          iconTone="blue"
+          iconTone="accent"
           label="Researched today"
           value={metrics.researched}
           detail="Prospects marked researched"
         />
         <MetricCard
           icon={Send}
-          iconTone="purple"
+          iconTone="secondary"
           label="Outreach today"
           value={
             <>
@@ -88,7 +88,7 @@ export default function Pipeline() {
         />
         <MetricCard
           icon={CalendarClock}
-          iconTone="orange"
+          iconTone="highlight"
           label="Follow-ups due"
           value={followups.length}
           detail="Today or earlier"
@@ -152,7 +152,7 @@ export default function Pipeline() {
                 <div className="record-list">
                   {prospects.map((item) => (
                     <div className="record-row" key={item.id}>
-                      <span className="record-icon purple">
+                      <span className="record-icon secondary">
                         <BriefcaseBusiness size={17} />
                       </span>
                       <button
@@ -220,7 +220,7 @@ export default function Pipeline() {
                     key={item.id}
                     onClick={() => openForm("interaction", asRecord(item))}
                   >
-                    <span className="record-icon blue">
+                    <span className="record-icon accent">
                       <MessageSquareText size={17} />
                     </span>
                     <span className="record-main">
@@ -238,7 +238,7 @@ export default function Pipeline() {
                     <Pill
                       tone={
                         ["outreach", "follow-up"].includes(item.kind)
-                          ? "blue"
+                          ? "accent"
                           : "neutral"
                       }
                     >
@@ -272,7 +272,7 @@ export default function Pipeline() {
                     key={job.id}
                     onClick={() => openForm("job", asRecord(job))}
                   >
-                    <span className="record-icon orange">
+                    <span className="record-icon highlight">
                       <BriefcaseBusiness size={17} />
                     </span>
                     <span className="record-main">
@@ -307,7 +307,7 @@ export default function Pipeline() {
         </section>
         <aside className="module-aside">
           <section className="panel side-panel">
-            <div className="side-panel-icon purple">
+            <div className="side-panel-icon secondary">
               <Send size={18} />
             </div>
             <span className="overline">TODAY’S OUTREACH</span>
@@ -321,7 +321,7 @@ export default function Pipeline() {
             </div>
             <Progress
               value={percentage(metrics.outreach, cycle.outreach_target)}
-              color="purple"
+              color="secondary"
             />
             <div className="side-counter">
               <span>Researched separately</span>

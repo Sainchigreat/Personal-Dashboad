@@ -124,7 +124,7 @@ export default function Dashboard() {
       toast(e instanceof Error ? e.message : "Could not update task.", "error");
     }
   }
-  const progressBackground = `conic-gradient(#5c83ff ${dayPct * 3.6}deg, #28314d 0deg)`;
+  const progressBackground = `conic-gradient(var(--accent-strong) ${dayPct * 3.6}deg, var(--progress-ring) 0deg)`;
   return (
     <div className="dashboard-page">
       {cycle.status === "active" && today.slice(0, 7) > cycle.month && (
@@ -252,7 +252,7 @@ export default function Dashboard() {
       <section className="metrics-grid" aria-label="Progress overview">
         <MetricCard
           icon={CircleDollarSign}
-          iconTone="blue"
+          iconTone="accent"
           label="Course sales"
           value={
             <>
@@ -262,7 +262,7 @@ export default function Dashboard() {
           }
           detail={
             <>
-              <span className="detail-dot blue" /> Paid sales this cycle
+              <span className="detail-dot accent" /> Paid sales this cycle
             </>
           }
           progress={percentage(metrics.sales, cycle.sales_target)}
@@ -279,7 +279,7 @@ export default function Dashboard() {
         />
         <MetricCard
           icon={UsersRound}
-          iconTone="purple"
+          iconTone="secondary"
           label="Client outreach"
           value={
             <>
@@ -289,7 +289,7 @@ export default function Dashboard() {
           }
           detail={
             <>
-              <span className="detail-dot purple" /> Outreach actions today
+              <span className="detail-dot secondary" /> Outreach actions today
             </>
           }
           progress={percentage(metrics.outreach, cycle.outreach_target)}
@@ -297,7 +297,7 @@ export default function Dashboard() {
         />
         <MetricCard
           icon={Clapperboard}
-          iconTone="orange"
+          iconTone="highlight"
           label="Creative projects"
           value={
             <>
@@ -307,7 +307,7 @@ export default function Dashboard() {
           }
           detail={
             <>
-              <span className="detail-dot orange" /> Completed this week
+              <span className="detail-dot highlight" /> Completed this week
             </>
           }
           progress={percentage(metrics.projectsDone, cycle.projects_target)}
@@ -349,7 +349,7 @@ export default function Dashboard() {
                       )}
                     </small>
                   </button>
-                  <Pill tone={task.priority === "high" ? "blue" : "neutral"}>
+                  <Pill tone={task.priority === "high" ? "accent" : "neutral"}>
                     {task.priority === "high"
                       ? "High priority"
                       : task.priority === "medium"
@@ -512,7 +512,7 @@ export default function Dashboard() {
                 key={project.id}
                 onClick={() => openForm("project", asRecord(project))}
               >
-                <span className="record-icon orange">
+                <span className="record-icon highlight">
                   <Clapperboard size={16} />
                 </span>
                 <span>

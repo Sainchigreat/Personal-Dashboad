@@ -51,8 +51,18 @@
     }
     try {
       const value = JSON.parse(stored || "null");
-      if (value && value.data && Array.isArray(value.generatedDays))
+      if (value && value.data && Array.isArray(value.generatedDays)) {
+        // Earlier demos seeded dark by default. Update only untouched settings;
+        // preserve every record and any appearance an owner has saved.
+        const settings = value.data.settings;
+        if (
+          settings?.theme === "dark" &&
+          settings.created_at &&
+          settings.created_at === settings.updated_at
+        )
+          settings.theme = "system";
         return value;
+      }
     } catch {
       /* Use a clean demo if stored data is invalid. */
     }
@@ -401,6 +411,8 @@
         });
       if (path === "/settings" && method === "PATCH") {
         const combined = { ...state.data.settings, ...body };
+        if (!["system", "dark", "light"].includes(combined.theme))
+          fail("Choose a valid appearance.");
         if (combined.work_start >= combined.work_end)
           fail("Workday end must be after its start.");
         try {

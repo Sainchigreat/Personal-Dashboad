@@ -16,6 +16,9 @@ function makeDemo(storage = new Map<string, string>()) {
     daily_templates: "[]",
     work_start: "08:00",
     work_end: "17:00",
+    theme: "system",
+    created_at: "2026-10-01T00:00:00.000Z",
+    updated_at: "2026-10-01T00:00:00.000Z",
   };
   data.cycles = [{ id: "cycle-one", month: "2026-11", status: "active" }];
   const defaults = Object.fromEntries(resources.map((name) => [name, {}]));
@@ -62,6 +65,35 @@ describe("browser-only preview adapter", () => {
     expect((await reopened.request("GET", "/bootstrap")).body.tasks).toEqual([
       expect.objectContaining({ title: "Preview task", status: "done" }),
     ]);
+  });
+
+  it("migrates untouched legacy appearance without losing records and preserves manual choices", async () => {
+    const demo = makeDemo();
+    await demo.request("POST", "/tasks", {
+      title: "Keep my task",
+      status: "todo",
+    });
+    const key = "momentum-os-browser-demo-v1";
+    const previous = JSON.parse(demo.storage.get(key)!);
+    previous.data.settings.theme = "dark";
+    demo.storage.set(key, JSON.stringify(previous));
+    let reopened = makeDemo(demo.storage);
+    let data = (await reopened.request("GET", "/bootstrap")).body;
+    expect(data.settings.theme).toBe("system");
+    expect(data.tasks).toEqual([
+      expect.objectContaining({ title: "Keep my task" }),
+    ]);
+    expect(
+      (await reopened.request("PATCH", "/settings", { theme: "light" })).status,
+    ).toBe(200);
+    reopened = makeDemo(demo.storage);
+    data = (await reopened.request("GET", "/bootstrap")).body;
+    expect(data.settings.theme).toBe("light");
+    expect(data.tasks).toHaveLength(1);
+    expect(
+      (await reopened.request("PATCH", "/settings", { theme: "invalid" }))
+        .status,
+    ).toBe(400);
   });
 
   it("does not count invalid paid sales or publish unapproved AI content", async () => {

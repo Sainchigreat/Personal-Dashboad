@@ -115,6 +115,7 @@ describe("private persistent workspace API", () => {
       timezone: "Africa/Lagos",
       work_start: "08:00",
       work_end: "17:00",
+      theme: "system",
     });
     expect(data.products[0]).toMatchObject({
       name: "Graphic Design with AI",
@@ -134,6 +135,23 @@ describe("private persistent workspace API", () => {
     expect(
       (await request("PATCH", "/settings", { name: "No CSRF" }, false)).status,
     ).toBe(403);
+  });
+  it("validates and persists automatic or manual appearance", async () => {
+    expect(
+      (await request("PATCH", "/settings", { theme: "dark" })).body.theme,
+    ).toBe("dark");
+    expect((await request("GET", "/bootstrap")).body.settings.theme).toBe(
+      "dark",
+    );
+    expect(
+      (await request("PATCH", "/settings", { theme: "light" })).body.theme,
+    ).toBe("light");
+    expect(
+      (await request("PATCH", "/settings", { theme: "invalid" })).status,
+    ).toBe(400);
+    expect(
+      (await request("PATCH", "/settings", { theme: "system" })).body.theme,
+    ).toBe("system");
   });
   it("persists tasks and only counts confirmed paid transactions", async () => {
     let result = await request("POST", "/tasks", {
@@ -377,6 +395,9 @@ describe("private persistent workspace API", () => {
     expect(data.cycles).toHaveLength(2);
     expect(data.sales).toHaveLength(2);
     expect(data.prospects).toHaveLength(1);
+    expect(
+      (await request("PATCH", "/settings", { theme: "dark" })).status,
+    ).toBe(200);
     server.kill("SIGTERM");
     await new Promise((resolve) => server.once("exit", resolve));
     server = spawn(process.execPath, ["--import", "tsx", "server/index.ts"], {
@@ -405,5 +426,6 @@ describe("private persistent workspace API", () => {
     expect(data.cycles).toHaveLength(2);
     expect(data.sales).toHaveLength(2);
     expect(data.prospects).toHaveLength(1);
+    expect(data.settings.theme).toBe("dark");
   });
 });

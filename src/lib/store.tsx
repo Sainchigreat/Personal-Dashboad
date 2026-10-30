@@ -10,6 +10,7 @@ import {
 import { api, setCsrf, setPreviewToken } from "./api";
 import { todayInZone } from "./date";
 import { browserStorage } from "./storage";
+import { watchTheme } from "./theme";
 import type {
   AuthStatus,
   Cycle,
@@ -146,9 +147,10 @@ export function AppProvider({
     const timer = window.setTimeout(() => setNotice(null), 4200);
     return () => window.clearTimeout(timer);
   }, [notice]);
-  useEffect(() => {
-    if (data) document.documentElement.dataset.theme = data.settings.theme;
-  }, [data]);
+  useEffect(
+    () => watchTheme(data?.settings.theme ?? "system"),
+    [data?.settings.theme],
+  );
   const setPage = useCallback((value: Page) => {
     location.hash = value;
     setPageState(value);

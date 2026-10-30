@@ -168,7 +168,7 @@ export default function MyDay() {
         <strong>{task.title}</strong>
         <span>
           <span
-            className={`category-dot ${task.category === "Course Growth" ? "green" : task.category === "Creative Studio" ? "orange" : task.category === "Client Pipeline" ? "purple" : "blue"}`}
+            className={`category-dot ${task.category === "Course Growth" ? "green" : task.category === "Creative Studio" ? "highlight" : task.category === "Client Pipeline" ? "secondary" : "accent"}`}
           />
           {task.category}
           {task.scheduled_time && (
@@ -191,7 +191,7 @@ export default function MyDay() {
           )}
         </span>
       </button>
-      <Pill tone={task.priority === "high" ? "blue" : "neutral"}>
+      <Pill tone={task.priority === "high" ? "accent" : "neutral"}>
         {task.priority}
       </Pill>
       <div className="task-actions">
@@ -300,7 +300,7 @@ export default function MyDay() {
             <SectionHeading
               title="Priority outcomes"
               sub="The important things you want to move forward."
-              action={<Pill tone="blue">{priorities.length} / 3</Pill>}
+              action={<Pill tone="accent">{priorities.length} / 3</Pill>}
             />
             <div className="day-task-list">
               {priorities.length ? (
@@ -458,7 +458,7 @@ export default function MyDay() {
               </div>
               <Progress
                 value={percentage(totalMinutes, available)}
-                color={totalMinutes > available ? "orange" : "blue"}
+                color={totalMinutes > available ? "highlight" : "accent"}
               />
               <div className="time-caption">
                 <span>

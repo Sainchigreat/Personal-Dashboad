@@ -48,7 +48,7 @@
   width: 16px;
   height: 16px;
   flex: none;
-  accent-color: #6a8eff;
+  accent-color: var(--accent-strong);
   margin: 0;
   padding: 0;
   box-shadow: none;
@@ -66,7 +66,7 @@
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  color: #a8b7d1;
+  color: var(--muted);
   font-size: 10px;
   margin-top: 20px;
   line-height: 1.6;
@@ -122,7 +122,7 @@
   margin-top: 3px;
 }
 .cycle-row.selected .cycle-row-main strong {
-  color: var(--blue);
+  color: var(--accent);
 }
 .cycle-row-icon {
   width: 36px;
@@ -130,13 +130,13 @@
   border-radius: 9px;
   display: grid;
   place-items: center;
-  background: #6c8df51a;
+  background: #95f5cd1a;
 }
 .calendar-glyph {
   display: grid;
   grid-template-columns: repeat(2, 4px);
   gap: 3px;
-  border: 1px solid #96acff;
+  border: 1px solid var(--accent);
   border-radius: 3px;
   padding: 5px 3px 3px;
 }
@@ -144,7 +144,7 @@
   width: 3px;
   height: 3px;
   border-radius: 1px;
-  background: #96acff;
+  background: var(--accent);
 }
 .product-row > span:nth-child(2) {
   flex: 1;
@@ -156,8 +156,8 @@
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  color: #9daec5;
-  background: #7189be0d;
+  color: var(--muted);
+  background: #88bea80d;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
@@ -167,7 +167,7 @@
 }
 .settings-info svg {
   flex: none;
-  color: #91a8da;
+  color: var(--accent);
 }
 .objective-list {
   margin-top: 15px;
@@ -179,13 +179,13 @@
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
-  color: #c6d0df;
+  color: var(--muted);
 }
 .objective-list > div:last-child {
   border: 0;
 }
 .objective-list span {
-  color: #7688ad;
+  color: var(--accent);
   font-size: 10px;
   font-weight: 700;
 }
