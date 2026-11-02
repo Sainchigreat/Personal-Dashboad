@@ -173,13 +173,12 @@ async function requireUser(req: Request, res: Response, next: NextFunction) {
   res.locals.session = session;
   return next();
 }
-if (
-  preview &&
-  !isPostgresBackend &&
-  !(await db
+async function ensurePreviewWorkspace(): Promise<void> {
+  if (!preview || isPostgresBackend) return;
+  const exists = await db
     .prepare("SELECT id FROM users WHERE email=?")
-    .get("preview@momentum.local"))
-) {
+    .get("preview@momentum.local");
+  if (exists) return;
   await createWorkspace(
     id(),
     "preview@momentum.local",
@@ -917,9 +916,17 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 export { app };
 
 if (process.env.MOMENTUM_IMPORT_ONLY !== "1") {
-  app.listen(port, "0.0.0.0", () =>
-    console.log(
-      `Momentum OS API listening on ${port}${preview ? " (isolated preview mode)" : ""}`,
-    ),
-  );
+  void (async () => {
+    try {
+      await ensurePreviewWorkspace();
+      app.listen(port, "0.0.0.0", () =>
+        console.log(
+          `Momentum OS API listening on ${port}${preview ? " (isolated preview mode)" : ""}`,
+        ),
+      );
+    } catch (error) {
+      console.error("Momentum OS API failed to start:", error);
+      process.exitCode = 1;
+    }
+  })();
 }

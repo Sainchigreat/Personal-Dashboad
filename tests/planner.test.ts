@@ -30,7 +30,7 @@ afterAll(async () => {
 });
 
 describe("goal-driven daily and weekly planning", () => {
-  it("generates the daily outreach routine with scheduled 5, 6 and 8 AM review blocks", async () => {
+  it("generates the corrected daily course, prospecting and publishing routine without retired job batches", async () => {
     await owner("daily-owner");
     await ensureDailyPlan("daily-owner", new Date("2026-11-02T12:00:00.000Z"));
     const rows = (await db
@@ -40,21 +40,18 @@ describe("goal-driven daily and weekly planning", () => {
       scheduled_time: string;
     }>;
     expect(rows.map((row) => row.title)).toContain(
-      "Publish today's Graphic Design with AI course promotion on WhatsApp Status",
+      "Promote Graphic Design with AI; respond to enquiries and follow up warm leads",
     );
     expect(rows.map((row) => row.title)).toContain(
-      "Complete and log 20 targeted client outreach actions",
+      "Research 10 new/emerging businesses and 10 established businesses",
     );
-    expect(
-      rows.find((row) => row.title.includes("5 AM batch"))?.scheduled_time,
-    ).toBe("05:00");
-    expect(
-      rows.find((row) => row.title.includes("6 AM LinkedIn batch"))
-        ?.scheduled_time,
-    ).toBe("06:00");
-    expect(
-      rows.find((row) => row.title.includes("8 AM batch"))?.scheduled_time,
-    ).toBe("08:00");
+    expect(rows.map((row) => row.title)).toContain(
+      "Send 20 relevant client outreach messages/proposals and log each interaction",
+    );
+    expect(rows.map((row) => row.title)).toContain(
+      "Research and contact 3 promotional partners for Graphic Design with AI",
+    );
+    expect(rows.some((row) => /5 AM batch|6 AM LinkedIn batch|8 AM batch/.test(row.title))).toBe(false);
   });
 
   it("maps the two-project and weekly publishing rhythm to the correct weekdays", async () => {
@@ -70,16 +67,16 @@ describe("goal-driven daily and weekly planning", () => {
     await ensureDailyPlan("thursday-owner", new Date("2026-11-05T12:00:00.000Z"));
     await ensureDailyPlan("friday-owner", new Date("2026-11-06T12:00:00.000Z"));
     expect(await titles("monday-owner")).toContain(
-      "Creative Project 1 \u2014 complete today's planned milestone",
+      "Start Creative Project 1: build the social-media campaign (Monday–Wednesday)",
     );
     expect(await titles("tuesday-owner")).toContain(
-      "Publish and distribute this week's course-growth content",
+      "Publish Carousel 1 and distribute it",
     );
     expect(await titles("tuesday-owner")).toContain(
-      "Develop one substantial Next Chapter content piece",
+      "Publish the YouTube free tutorial and share it with the community",
     );
     expect(await titles("thursday-owner")).toContain(
-      "Creative Project 2 \u2014 complete today's planned milestone",
+      "Publish Carousel 2",
     );
     expect(await titles("thursday-owner")).toContain(
       "Develop one substantial Next Chapter content piece",

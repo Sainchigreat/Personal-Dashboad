@@ -22,6 +22,7 @@ import {
   Settings2,
   Sparkles,
   UsersRound,
+  Target,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { page: "command", label: "Command Centre", icon: LayoutGrid },
       { page: "day", label: "My Day", icon: CheckSquare2 },
+      { page: "goals", label: "Weekly Goals", icon: Target },
       { page: "review", label: "Weekly Review", icon: BarChart3 },
     ],
   },
