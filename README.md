@@ -13,6 +13,7 @@ Momentum OS is a private operating workspace for turning long-term ambitions int
 - **Creative Studio** manages briefs, deadlines, stages, output links, and project-to-content relationships. A completed stage records its actual completion time.
 - **Next Chapter** manages sessions, guest details, a generated session checklist and linked planning tasks. Session content and AI-assisted content require explicit human approval before being marked published or distributed.
 - **Personal Brand** manages an idea bank and date-ordered content list, platforms, drafts, project/session links, and manually recorded publication states. It does not publish externally.
+- **Weekly Goals** stores editable weekly outcomes, targets, notes and links to existing tasks; progress is calculated from linked task completion without duplicating work. The November 2–8 plan is preloaded for the demo and production owner setup.
 - **Weekly Review** derives its numbers from recorded activity and saves reflections. Settings cover profile, working hours, timezone, recurring plans, platforms, theme, in-app attention badges, products, cycles, and JSON export.
 - **Cycle rollover** archives the active cycle, accepts new targets and objectives, and optionally creates linked copies of unfinished tasks while marking the originals as carried. Projects, prospects, and content remain available. Historical sales and targets are retained. A reminder appears when an active cycle is in the past; rollover is deliberately user-initiated, not silent.
 - **Team Workspace** shares intentionally created goals and assignments without sharing the owner's personal data. Members see shared goals, the team roster, and their own assignments and discussions. Owners and managers can manage and review shared work. Assigned team work appears separately in the owner's My Day when due and never changes personal task metrics. Team members get their own Momentum OS portal and appearance preference.
@@ -175,3 +176,8 @@ git push origin arena/0d207c00-personal-dashboad
 ```
 
 Open a pull request from that branch when you want to merge the work. No repository credentials are needed in the codebase.
+
+
+## November 2–8 operating plan
+
+The daily planner uses an editable recurring routine aligned to the operating plan: publish one useful piece daily; promote Graphic Design with AI and follow up warm leads; research 10 new/emerging plus 10 established businesses; send and log 20 actual outreach actions/proposals separately from research; and research/contact three promotional partners daily for Graphic Design with AI (not Next Chapter). Capture useful AI/design industry developments and record a daily close-out. The retired 05:00 job-search, 06:00 LinkedIn and 08:00 job-search batches are removed from the new routine and migrated out of the matching old starter routine while preserving unrelated custom tasks. Weekday tasks map the November 2–8 publication schedule, two Creative Studio projects, two separate brand-identity projects, Thursday YouTube tutorial, Friday Next Chapter session, Monday team meeting/designer briefs and Social Media Manager recruitment. Generated tasks start incomplete; no sales or publication is marked complete automatically.
