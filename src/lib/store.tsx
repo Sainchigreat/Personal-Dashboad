@@ -32,6 +32,7 @@ const pages: Page[] = [
   "pipeline",
   "review",
   "team",
+  "cloud",
   "settings",
 ];
 const pageFromHash = (): Page => {

@@ -34,10 +34,23 @@ if (preview && process.env.NODE_ENV === "production")
   throw new Error("Preview sign-in cannot be enabled in production.");
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+// Production CSP must explicitly allow the browser to reach the Momentum
+// Cloud backend. Development leaves CSP off so the preview proxy can work.
+const supabaseOrigin = (process.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
 app.use(
   helmet({
     contentSecurityPolicy:
-      process.env.NODE_ENV === "production" ? undefined : false,
+      process.env.NODE_ENV === "production"
+        ? {
+            directives: {
+              ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+              "connect-src": [
+                "'self'",
+                ...(supabaseOrigin ? [supabaseOrigin] : []),
+              ],
+            },
+          }
+        : false,
   }),
 );
 app.use(express.json({ limit: "1mb" }));

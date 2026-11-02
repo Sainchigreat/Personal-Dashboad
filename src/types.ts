@@ -8,6 +8,7 @@ export type Page =
   | "pipeline"
   | "review"
   | "team"
+  | "cloud"
   | "settings";
 export type FormName =
   | "task"

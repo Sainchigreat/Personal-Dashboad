@@ -11,6 +11,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Clapperboard,
+  CloudCog,
   Command,
   LayoutGrid,
   Menu,
@@ -56,7 +57,10 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
   },
   {
     title: "SYSTEM",
-    items: [{ page: "settings", label: "Settings", icon: Settings2 }],
+    items: [
+      { page: "cloud", label: "Momentum Cloud", icon: CloudCog },
+      { page: "settings", label: "Settings", icon: Settings2 },
+    ],
   },
 ];
 export const allNav = groups.flatMap((group) => group.items);

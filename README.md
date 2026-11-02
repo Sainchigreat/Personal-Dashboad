@@ -25,7 +25,7 @@ The current goal-driven planner also includes fixed weekday suggestions and star
 
 ## Architecture
 
-The interface uses React, TypeScript, Vite, and a reusable component/design system. An Express API persists data in a relational SQLite database using Node's built-in `node:sqlite` (currently marked experimental by Node). It is an independently deployable alternative to a managed database for this one-owner, one-team MVP. No connected Supabase project has been changed or configured.
+The interface uses React, TypeScript, Vite, and a reusable component/design system. Two persistence modes now exist. The original Express API persists data in a relational SQLite database using Node's built-in `node:sqlite` (experimental in Node 22); it remains the default for the local/sandbox preview. **Momentum AI** adds a managed PostgreSQL backend on the connected Supabase **Momentum** project: versioned migrations, row level security, Supabase Auth, RPC functions and a deployed Edge Function REST API. See [Momentum AI — cloud backend](#momentum-ai--cloud-backend) and `supabase/README.md`.
 
 - **Permanent layer:** owner/profile and preferences, products, projects, prospects, jobs, sessions, and content.
 - **Cycle and execution layer:** operating cycles and targets, tasks, sales, enquiries, campaigns/promotions, interactions, session checklists, daily notes, and weekly reviews. Links associate cycle-specific records with their cycle and connect content to projects or sessions.
@@ -34,6 +34,30 @@ The interface uses React, TypeScript, Vite, and a reusable component/design syst
 - **Privacy:** production mode has one owner account and invited team accounts. Passwords use bcrypt; random session and invitation tokens are stored as hashes. Sessions use HttpOnly cookies and CSRF protection. Personal APIs are owner-only. Team accounts receive no seeded personal cycles, tasks, or financial records. Input and cross-record references are validated server-side. The first owner account must be created immediately after deployment.
 
 The schema is in `server/schema.sql`; personal API validation and cross-record rules are in `server/validation.ts` and `server/index.ts`; team authorization and workflow rules are in `server/team.ts`. `src/lib/metrics.ts` contains the derived personal reporting rules. Existing databases receive additive settings, account-type, and team-table migrations without deleting records. Accounts from the earlier GitHub team draft are classified as team-only; any personal rows it seeded for them are retained but no longer exposed through personal APIs. Future schema changes should be introduced as explicit, versioned migrations.
+
+## Momentum AI — cloud backend
+
+The connected Supabase project **Momentum** now hosts the production backend:
+
+- **30 Postgres tables** covering the personal workspace, the deliberately separate shared team workspace, and a new Momentum AI layer (`ai_suggestions`, `ai_daily_briefs`, `ai_runs`, `activity_events`).
+- **Supabase Auth** replaces bcrypt/cookie sessions in cloud mode. A trigger seeds each new owner with editable settings, the *Graphic Design with AI* product, the monthly cycle and a private team workspace. Team accounts receive no personal records.
+- **41 RLS policies** isolate every account. The anonymous/publishable key has no table privileges; the service-role key is never used by browser code.
+- **Postgres RPCs**: `momentum_health`, `workspace_bootstrap`, `command_centre`, `ensure_daily_plan` (the goal-driven daily planner) and `generate_ai_suggestions` (rules-based briefing from real records).
+- **Edge Function `momentum-api`** exposes a CORS-enabled REST API at `/functions/v1/momentum-api`. It verifies the caller's JWT and runs all queries as that user, so RLS remains the final authorization boundary.
+
+Open **Momentum Cloud** in the app sidebar to see the live health check, create the owner account, build a daily plan, generate a brief and review the AI inbox. The browser talks to Supabase directly; the sandbox itself has restricted outbound network access, so the health check needs a normal network connection from your device.
+
+```bash
+# .env.local (gitignored) — publishable key only, never a secret key
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<publishable key>
+
+npm run verify:cloud   # optional health check from a machine with internet access
+```
+
+Full schema, endpoint list and limits: [`supabase/README.md`](supabase/README.md). SQL source of truth: `supabase/migrations/`; API source: `supabase/functions/momentum-api/index.ts`.
+
+> **Integration status.** The existing workspace pages still read and write through the local Express/SQLite API. The cloud backend is live and fully usable from the Momentum Cloud page; wiring the rest of the UI to the cloud adapter is the next step. The AI layer is deterministic (`rules-v1`) and never fabricates sales, outreach or completed work — an external model can replace it later.
 
 ## Run locally
 
@@ -90,14 +114,16 @@ Copy `.env.example` to `.env` if desired, or provide environment variables throu
 | `MOMENTUM_API_PORT` | Optional Vite proxy target port when different from `PORT`  | `PORT` / `3001`                                      |
 | `MOMENTUM_PREVIEW`  | `1` enables insecure sandbox sign-in in non-production only | disabled                                             |
 | `NODE_ENV`          | `production` enables secure cookies and serves `dist`       | development                                          |
+| `VITE_SUPABASE_URL` | Momentum Cloud project URL (browser, publishable)          | unset — cloud page shows setup instructions          |
+| `VITE_SUPABASE_ANON_KEY` | Momentum Cloud publishable/anon key (browser)         | unset — protected by RLS                             |
 
 For production, run `npm ci`, `npm run build`, then `npm start` behind an HTTPS reverse proxy. Set `DATA_DIR` to a **durable, private, writable volume**; application files and ephemeral containers alone are not durable storage. Protect the initial setup URL and create the owner account immediately. The proxy should strip untrusted forwarded headers and apply its own rate limiting. Secure cookies require HTTPS for remote access. Back up the database volume regularly using a SQLite-consistent backup (or stop the server before copying the database and its WAL files); the in-app JSON export is an additional portable backup. Do not commit databases, exports containing personal information, `.env`, or credentials.
 
-This SQLite deployment is intended for **one server instance / one owner and one shared team**, not serverless or multi-instance shared storage. A managed PostgreSQL/Supabase deployment and multi-device cloud hosting would need a separate adapter and migration. The current sandbox preview is not such a deployment. The in-app JSON export includes personal records and shared team work but omits passwords, sessions, and invitation token hashes; it cannot restore accounts. A durable SQLite backup is required for full recovery.
+This SQLite deployment is intended for **one server instance / one owner and one shared team**, not serverless or multi-instance shared storage. For multi-device cloud hosting, use the Momentum AI Supabase backend described above; the client adapter in `src/lib/api.ts` is the seam to switch from `/api` to the Edge Function. The sandbox preview is not a production deployment. The in-app JSON export includes personal records and shared team work but omits passwords, sessions, and invitation token hashes; it cannot restore accounts. A durable SQLite backup is required for full recovery.
 
 ## Deliberate limits / future phases
 
-This is a working MVP, not the entire long-term specification. Not yet implemented: managed Supabase/cloud sync, account recovery, email delivery or independent mailbox verification, adding existing accounts to a team, multiple team workspaces, in-app JSON restore or CSV export, external integrations or notifications, file uploads, automatic session generation, a drag-and-drop calendar, dedicated guest/customer directories, detailed campaign/content performance analytics, and a dedicated end-of-month review form. Campaign results, session transcripts, guest names, and other context can currently be recorded as notes or fields. Project/task time is entered manually. No AI drafting, payment processing, WhatsApp/email sending, or publishing is performed by the app. The user must explicitly record those actions elsewhere and log what actually happened.
+This is a working MVP, not the entire long-term specification. The managed Supabase database, auth, RLS, RPCs and REST API are now built; **not yet implemented**: switching the existing workspace pages from the local adapter to the cloud adapter, a real LLM behind the rules-based suggestion engine, scheduled cron planning, account recovery, email delivery or independent mailbox verification, adding existing accounts to a team, multiple team workspaces, in-app JSON restore or CSV export, external integrations or notifications, file uploads, automatic session generation, a drag-and-drop calendar, dedicated guest/customer directories, detailed campaign/content performance analytics, and a dedicated end-of-month review form. Campaign results, session transcripts, guest names, and other context can currently be recorded as notes or fields. Project/task time is entered manually. No AI drafting, payment processing, WhatsApp/email sending, or publishing is performed by the app. The user must explicitly record those actions elsewhere and log what actually happened.
 
 ## GitHub
 
@@ -107,7 +133,7 @@ This checkout already has `origin` configured for `Sainchigreat/Personal-Dashboa
 git status
 git diff
 # Commit your reviewed changes if they have not already been committed.
-git push origin arena/a531ed6e-personal-dashboad
+git push origin arena/0d207c00-personal-dashboad
 ```
 
 Open a pull request from that branch when you want to merge the work. No repository credentials are needed in the codebase.

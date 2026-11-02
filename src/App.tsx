@@ -13,6 +13,7 @@ import Review from "./pages/Review";
 import Settings from "./pages/Settings";
 import TeamWorkspace from "./pages/TeamWorkspace";
 import TeamPortal from "./pages/TeamPortal";
+import Cloud from "./pages/Cloud";
 import { TeamProvider } from "./lib/team";
 
 function Workspace() {
@@ -27,6 +28,7 @@ function Workspace() {
     pipeline: <Pipeline />,
     review: <Review />,
     team: <TeamWorkspace auth={auth} />,
+    cloud: <Cloud />,
     settings: <Settings />,
   };
   return (
