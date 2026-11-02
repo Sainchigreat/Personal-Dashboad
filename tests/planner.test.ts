@@ -67,7 +67,7 @@ describe("goal-driven daily and weekly planning", () => {
     await ensureDailyPlan("thursday-owner", new Date("2026-11-05T12:00:00.000Z"));
     await ensureDailyPlan("friday-owner", new Date("2026-11-06T12:00:00.000Z"));
     expect(await titles("monday-owner")).toContain(
-      "Creative Project 1 \u2014 complete today's planned milestone",
+      "Start Creative Project 1: build the social-media campaign (Monday–Wednesday)",
     );
     expect(await titles("tuesday-owner")).toContain(
       "Publish Carousel 1 and distribute it",
@@ -76,7 +76,7 @@ describe("goal-driven daily and weekly planning", () => {
       "Publish the YouTube free tutorial and share it with the community",
     );
     expect(await titles("thursday-owner")).toContain(
-      "Creative Project 2 \u2014 complete today's planned milestone",
+      "Publish Carousel 2",
     );
     expect(await titles("thursday-owner")).toContain(
       "Develop one substantial Next Chapter content piece",
