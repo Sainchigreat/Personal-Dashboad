@@ -173,13 +173,18 @@ async function requireUser(req: Request, res: Response, next: NextFunction) {
   res.locals.session = session;
   return next();
 }
-if (
-  preview &&
-  !isPostgresBackend &&
-  !(await db
+// Preview-only demo workspace. This MUST NOT use top-level await: Netlify's
+// esbuild bundler emits the Function as CommonJS, where module-scope `await` is
+// a syntax error ("Top-level await is currently not supported with the cjs
+// output format"). It is only invoked by the direct-execution path at the
+// bottom of this file, so importing this module from the Netlify Function never
+// runs it. Keeping the await inside an async function is CJS-safe.
+async function ensurePreviewWorkspace(): Promise<void> {
+  if (!preview || isPostgresBackend) return;
+  const exists = await db
     .prepare("SELECT id FROM users WHERE email=?")
-    .get("preview@momentum.local"))
-) {
+    .get("preview@momentum.local");
+  if (exists) return;
   await createWorkspace(
     id(),
     "preview@momentum.local",
@@ -917,9 +922,19 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 export { app };
 
 if (process.env.MOMENTUM_IMPORT_ONLY !== "1") {
-  app.listen(port, "0.0.0.0", () =>
-    console.log(
-      `Momentum OS API listening on ${port}${preview ? " (isolated preview mode)" : ""}`,
-    ),
-  );
+  // Async IIFE, not top-level await: preview setup must finish before the
+  // server starts listening, while the module stays valid in a CJS bundle.
+  void (async () => {
+    try {
+      await ensurePreviewWorkspace();
+      app.listen(port, "0.0.0.0", () =>
+        console.log(
+          `Momentum OS API listening on ${port}${preview ? " (isolated preview mode)" : ""}`,
+        ),
+      );
+    } catch (error) {
+      console.error("Momentum OS API failed to start:", error);
+      process.exitCode = 1;
+    }
+  })();
 }

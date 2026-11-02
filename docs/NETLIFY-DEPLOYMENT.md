@@ -34,6 +34,50 @@ data.
 
 ---
 
+## 0b. Second deploy blocker (fixed): CJS bundling vs top-level await
+
+Netlify reported: *`server/index.ts` contains top-level `await`, but esbuild is
+bundling the Netlify Function as CommonJS (CJS)*.
+
+**Reproduced locally** (Netlify-style esbuild invocation):
+
+```
+npx esbuild netlify/functions/api.ts --bundle --platform=node \
+  --format=cjs --target=node22 \
+  --external:express --external:express-async-errors \
+  --outfile=/tmp/momentum-fn-cjs.js
+```
+
+→ `ERROR Top-level await is currently not supported with the "cjs" output
+format` at `server/index.ts:179` and `server/index.ts:183`.
+
+**Root cause.** `package.json` has `"type": "module"`, so `tsx` runs the source
+as ESM locally and the module-scope `await` works there. Netlify's Function
+bundler is independent of that and emits **CJS** for a v1 function, where
+top-level await is a syntax error. The offending block was the **preview-only**
+demo-workspace bootstrap (`MOMENTUM_PREVIEW=1`, no `DATABASE_URL`) — dead code
+in a deployed Function, but esbuild rejects it at parse time regardless.
+
+**Checks performed.**
+
+| # | Question | Answer |
+| --- | --- | --- |
+| 1 | `netlify.toml` `[functions]` | `node_bundler = "esbuild"`, `external_node_modules = ["express","express-async-errors"]`. No module-type setting. Config itself is correct. |
+| 2 | Should we add `node_module_type = "esm"`? | **No.** `@netlify/config` v25.5.2 `FUNCTION_CONFIG_PROPERTIES` = `deno_import_map, directory, external_node_modules, ignored_node_modules, included_files, memory, node_bundler, region, schedule, vcpu`. `node_module_type` is **not a valid key** — it would be ignored. Documented ESM switches (`.mts` entry, `netlify/functions/package.json` with `{"type":"module"}`, v2 functions) change the module format of the whole Function and are unnecessary/riskier for a graph built on CJS `express` + `serverless-http` + `express-async-errors`. |
+| 3 | Are `netlify/functions/api.ts` and its imports ESM-compatible? | **Yes.** The Function uses `import serverless from "serverless-http"`, `export const handler`, `export function normalizeEvent`, and `await import()` **inside** the handler (allowed in CJS). No `import.meta` anywhere in `server/` or `netlify/`. Both `--format=cjs` and `--format=esm` bundles succeed after the fix. They do not *require* ESM — the only ESM-only construct was the top-level await. |
+
+**Fix (safest, minimal, no architecture change).** Moved the preview bootstrap
+into `async function ensurePreviewWorkspace()` and invoked it from the
+direct-execution branch via an **async IIFE** before `app.listen()`. No
+top-level await remains; preview behaviour is unchanged (workspace is still
+created before the server listens); the Function import path
+(`MOMENTUM_IMPORT_ONLY=1`) skips it entirely. No change to `netlify.toml`
+behaviour, env var names, database architecture, auth, or the Supabase project.
+`tests/netlify-bundle.test.ts` now bundles the real entry as CJS on every test
+run, so this cannot regress silently.
+
+---
+
 ## 1. Why I could not create or refresh a deployment from this sandbox
 
 The URL is now known (§0), but a deployment **could not be created or refreshed

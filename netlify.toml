@@ -21,6 +21,12 @@
 
 [functions]
   node_bundler = "esbuild"
+  # Netlify emits this v1 Function as CommonJS. Top-level await is a CJS syntax
+  # error, so server/*.ts must stay free of module-scope `await`. There is no
+  # supported `node_module_type` key in @netlify/config (valid keys are:
+  # deno_import_map, directory, external_node_modules, ignored_node_modules,
+  # included_files, memory, node_bundler, region, schedule, vcpu), so keeping
+  # CJS and removing the top-level await is the safe fix.
   # Keep express (and the async-error patch that reaches into express/lib/router)
   # external so both resolve to the same runtime module instance.
   external_node_modules = ["express", "express-async-errors"]
