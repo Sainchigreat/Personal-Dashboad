@@ -32,6 +32,21 @@ import {
   SectionHeading,
 } from "../components/UI";
 
+function readPriorities(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed?.version === 1) return String(parsed.reflection_priorities || "");
+  } catch {}
+  return value || "";
+}
+function writePriorities(value: string, existing: string) {
+  try {
+    const parsed = JSON.parse(existing);
+    if (parsed?.version === 1) return JSON.stringify({ ...parsed, reflection_priorities: value });
+  } catch {}
+  return value;
+}
+
 export default function Review() {
   const { data, today, create, update, toast } = useApp();
   const [week, setWeek] = useState(weekStart(today));
@@ -51,7 +66,7 @@ export default function Review() {
       wins: review?.wins || "",
       blockers: review?.blockers || "",
       lessons: review?.lessons || "",
-      priorities: review?.priorities || "",
+      priorities: readPriorities(review?.priorities || ""),
     });
   }, [week, review?.id, review?.updated_at]);
   const completedTasks = data.tasks.filter(
@@ -70,8 +85,10 @@ export default function Review() {
     event.preventDefault();
     setSaving(true);
     try {
-      if (review) await update("weekly_reviews", review.id, notes);
-      else await create("weekly_reviews", { week_start: week, ...notes });
+      const priorities = writePriorities(notes.priorities, review?.priorities || "");
+      const payload = { ...notes, priorities };
+      if (review) await update("weekly_reviews", review.id, payload);
+      else await create("weekly_reviews", { week_start: week, ...payload });
       toast("Weekly review saved.");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Unable to save review.", "error");
