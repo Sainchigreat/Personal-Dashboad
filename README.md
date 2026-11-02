@@ -21,7 +21,7 @@ The white-first Light appearance is the default across personal and team workspa
 
 Initial values are editable: **Graphic Design with AI** at ₦14,900, 68 paid sales, ₦1,013,200 revenue target, 20 daily outreach actions, two weekly creative projects, a Friday Next Chapter cadence, Tuesday/Wednesday/Friday course publishing, Africa/Lagos, and 08:00–17:00 work hours. Initial tasks are _plans_, not completed activity; no sales or engagement are fabricated.
 
-The current goal-driven planner also includes fixed weekday suggestions and starter review blocks at 05:00 and 06:00. Those suggestions do not yet adapt when cycle days or work hours change; generated tasks can be edited or removed, and the recurring plan can be turned off in Settings. Unfinished tasks are never carried forward automatically.
+The daily planner uses an editable recurring routine. The aligned prospecting target is 10 new/emerging businesses plus 10 established businesses daily; record research separately from actual outreach. The retired 05:00 job-search, 06:00 LinkedIn and 08:00 job-search batches, and the old generic outreach reminder, are removed from the default routine. Existing personalised recurring routines are preserved. Generated tasks start incomplete, can be edited or removed, and the recurring plan can be turned off in Settings. Unfinished tasks are never carried forward automatically.
 
 ## Architecture
 
