@@ -555,7 +555,7 @@ export async function ensureDailyPlan(
     add("Brief designers on the Next Chapter main flyer, speaker-bio flyer and separate advertising flyer", "Next Chapter", "high", 30);
     add("Begin recruiting a Social Media Manager (separate from the existing Community Manager)", "Personal Brand", "high", 30);
     add("Select and publish Monday's planned post", "Personal Brand", "high", 45);
-    add("Start Brand Identity Project 1; prepare its first content milestone for Wednesday", "Creative Studio", "high", 90);
+    add("Start Brand Identity Project 1; prepare its first content milestone for Wednesday", "Personal Brand", "high", 90);
   }
   if (weekdayNumber === 2) {
     add("Publish Carousel 1 and distribute it", "Personal Brand", "high", 45);
