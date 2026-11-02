@@ -63,6 +63,7 @@ export const configs = {
       cycle_id: cycle,
       project_id: optionalId,
       session_id: optionalId,
+      weekly_goal_id: optionalId,
       title: short,
       description: long,
       category: short,
@@ -299,6 +300,69 @@ export const configs = {
     },
     ["week_start"],
   ),
+  // Goal hierarchy. The generic /api/:resource routes scope every read and
+  // write by user_id, so these records are private to their owner by default.
+  monthly_goals: resource(
+    {
+      workspace_id: short,
+      title: short,
+      description: long,
+      category: short,
+      metric_type: z.enum(["outcome", "project", "behaviour"]),
+      source: z.enum([
+        "manual",
+        "tasks",
+        "sales",
+        "revenue",
+        "publishing",
+        "outreach",
+        "projects",
+      ]),
+      target: nonnegative,
+      unit: short,
+      baseline: nonnegative,
+      status: z.enum(["active", "archived", "completed"]),
+      start_date: dateValue,
+      end_date: dateValue,
+      notes: long,
+    },
+    ["title"],
+  ),
+  weekly_goals: resource(
+    {
+      workspace_id: short,
+      monthly_goal_id: optionalId,
+      cycle_id: optionalId,
+      week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      week_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      outcome: short,
+      target: nonnegative,
+      unit: short,
+      source: z.enum([
+        "manual",
+        "tasks",
+        "sales",
+        "revenue",
+        "publishing",
+        "outreach",
+        "projects",
+      ]),
+      owner_id: optionalId,
+      assignee_id: optionalId,
+      priority: z.enum(["high", "medium", "low"]),
+      status: z.enum(["active", "archived", "completed", "carried"]),
+      visibility: z.enum(["private", "team"]),
+      notes: long,
+    },
+    ["week_start", "week_end", "outcome"],
+  ),
+  goal_links: resource(
+    {
+      weekly_goal_id: z.string().uuid(),
+      monthly_goal_id: z.string().uuid(),
+    },
+    ["weekly_goal_id", "monthly_goal_id"],
+  ),
 } as const;
 
 export const settingsSchema = z
@@ -364,4 +428,6 @@ export const foreignKeys: Record<string, string> = {
   project_id: "projects",
   session_id: "chapter_sessions",
   prospect_id: "prospects",
+  weekly_goal_id: "weekly_goals",
+  monthly_goal_id: "monthly_goals",
 };

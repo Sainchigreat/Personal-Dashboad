@@ -7,6 +7,7 @@ export type Page =
   | "brand"
   | "pipeline"
   | "review"
+  | "goals"
   | "team"
   | "cloud"
   | "settings";
@@ -70,6 +71,7 @@ export interface Task extends Base {
   project_id: string | null;
   session_id: string | null;
   carried_from_id: string | null;
+  weekly_goal_id: string | null;
   title: string;
   description: string;
   category: string;
@@ -213,6 +215,57 @@ export interface WeeklyReview extends Base {
   lessons: string;
   priorities: string;
 }
+/** Monthly -> Weekly -> Daily goal hierarchy (additive schema). */
+export interface MonthlyGoal extends Base {
+  workspace_id: string;
+  title: string;
+  description: string;
+  category: string;
+  metric_type: "outcome" | "project" | "behaviour";
+  source:
+    | "manual"
+    | "tasks"
+    | "sales"
+    | "revenue"
+    | "publishing"
+    | "outreach"
+    | "projects";
+  target: number;
+  unit: string;
+  baseline: number;
+  status: "active" | "archived" | "completed";
+  start_date: string | null;
+  end_date: string | null;
+  notes: string;
+}
+export interface WeeklyGoal extends Base {
+  workspace_id: string;
+  monthly_goal_id: string | null;
+  cycle_id: string | null;
+  week_start: string;
+  week_end: string;
+  outcome: string;
+  target: number;
+  unit: string;
+  source:
+    | "manual"
+    | "tasks"
+    | "sales"
+    | "revenue"
+    | "publishing"
+    | "outreach"
+    | "projects";
+  owner_id: string | null;
+  assignee_id: string | null;
+  priority: "high" | "medium" | "low";
+  status: "active" | "archived" | "completed" | "carried";
+  visibility: "private" | "team";
+  notes: string;
+}
+export interface GoalLink {
+  weekly_goal_id: string;
+  monthly_goal_id: string;
+}
 export interface Data {
   settings: Settings;
   cycles: Cycle[];
@@ -231,6 +284,9 @@ export interface Data {
   content_items: ContentItem[];
   daily_notes: DailyNote[];
   weekly_reviews: WeeklyReview[];
+  monthly_goals: MonthlyGoal[];
+  weekly_goals: WeeklyGoal[];
+  goal_links: GoalLink[];
 }
 export type Resource = Exclude<keyof Data, "settings">;
 export interface AuthStatus {

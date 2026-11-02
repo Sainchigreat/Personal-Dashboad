@@ -13,6 +13,7 @@ Momentum OS is a private operating workspace for turning long-term ambitions int
 - **Creative Studio** manages briefs, deadlines, stages, output links, and project-to-content relationships. A completed stage records its actual completion time.
 - **Next Chapter** manages sessions, guest details, a generated session checklist and linked planning tasks. Session content and AI-assisted content require explicit human approval before being marked published or distributed.
 - **Personal Brand** manages an idea bank and date-ordered content list, platforms, drafts, project/session links, and manually recorded publication states. It does not publish externally.
+- **Weekly Goals** stores editable weekly outcomes, targets, notes and links to existing tasks. Each goal declares a source of truth (linked completed tasks, manual entry, or specialist-module records); sales, revenue, publishing and outreach are never inflated by task checkboxes. New accounts start with an empty state and first-use guidance; the verified owner's November 2-8 plan is applied only by the owner-scoped backfill in `scripts/backfill-goals.ts`.
 - **Weekly Review** derives its numbers from recorded activity and saves reflections. Settings cover profile, working hours, timezone, recurring plans, platforms, theme, in-app attention badges, products, cycles, and JSON export.
 - **Cycle rollover** archives the active cycle, accepts new targets and objectives, and optionally creates linked copies of unfinished tasks while marking the originals as carried. Projects, prospects, and content remain available. Historical sales and targets are retained. A reminder appears when an active cycle is in the past; rollover is deliberately user-initiated, not silent.
 - **Team Workspace** shares intentionally created goals and assignments without sharing the owner's personal data. Members see shared goals, the team roster, and their own assignments and discussions. Owners and managers can manage and review shared work. Assigned team work appears separately in the owner's My Day when due and never changes personal task metrics. Team members get their own Momentum OS portal and appearance preference.
@@ -163,6 +164,14 @@ token, site ID or reachable Netlify API). No database secret is committed.
 
 This is a working MVP, not the entire long-term specification. The managed Supabase database, auth, RLS, RPCs and REST API are now built; **not yet implemented**: switching the existing workspace pages from the local adapter to the cloud adapter, a real LLM behind the rules-based suggestion engine, scheduled cron planning, account recovery, email delivery or independent mailbox verification, adding existing accounts to a team, multiple team workspaces, in-app JSON restore or CSV export, external integrations or notifications, file uploads, automatic session generation, a drag-and-drop calendar, dedicated guest/customer directories, detailed campaign/content performance analytics, and a dedicated end-of-month review form. Campaign results, session transcripts, guest names, and other context can currently be recorded as notes or fields. Project/task time is entered manually. No AI drafting, payment processing, WhatsApp/email sending, or publishing is performed by the app. The user must explicitly record those actions elsewhere and log what actually happened.
 
+## Goal hierarchy
+
+Monthly Goals → Weekly Goals → Daily Deliverables are additive tables
+(`monthly_goals`, `weekly_goals`, `goal_links`, `tasks.weekly_goal_id`) with
+owner scoping, foreign keys and indexes. See [`docs/GOAL-HIERARCHY.md`](docs/GOAL-HIERARCHY.md)
+for the schema, the owner-only backfill, progress-source rules and the current
+release status. No existing records are deleted or reseeded.
+
 ## GitHub
 
 This checkout already has `origin` configured for `Sainchigreat/Personal-Dashboad`; the repository is the source of application code, not of private database records. Continue development on the existing Arena session branch. To sync after reviewing the changes:
@@ -171,7 +180,12 @@ This checkout already has `origin` configured for `Sainchigreat/Personal-Dashboa
 git status
 git diff
 # Commit your reviewed changes if they have not already been committed.
-git push origin arena/0d207c00-personal-dashboad
+git push origin <your-working-branch>
 ```
 
 Open a pull request from that branch when you want to merge the work. No repository credentials are needed in the codebase.
+
+
+## November 2–8 operating plan
+
+The daily planner uses an editable recurring routine aligned to the operating plan: publish one useful piece daily; promote Graphic Design with AI and follow up warm leads; research 10 new/emerging plus 10 established businesses; send and log 20 actual outreach actions/proposals separately from research; and research/contact three promotional partners daily for Graphic Design with AI (not Next Chapter). Capture useful AI/design industry developments and record a daily close-out. The retired 05:00 job-search, 06:00 LinkedIn and 08:00 job-search batches are removed from the new routine and migrated out of the matching old starter routine while preserving unrelated custom tasks. Weekday tasks map the November 2–8 publication schedule, two Creative Studio projects, two separate brand-identity projects, Thursday YouTube tutorial, Friday Next Chapter session, Monday team meeting/designer briefs and Social Media Manager recruitment. Generated tasks start incomplete; no sales or publication is marked complete automatically.

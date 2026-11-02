@@ -24,7 +24,18 @@ vi.mock("pg", async () => {
     .filter((line) => !line.trim().startsWith("--"))
     .join("\n")
     .replace(/comment on schema[\s\S]*?;\s*$/i, "");
+  const goalDdl = readFileSync(
+    resolve(
+      process.cwd(),
+      "supabase/migrations/20261102000500_goal_hierarchy.sql",
+    ),
+    "utf8",
+  )
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n");
   await engine.exec(ddl);
+  await engine.exec(goalDdl);
   state.engine = engine;
   class Pool {
     async query(sql: string, params: unknown[] = []) {
