@@ -493,6 +493,44 @@ export async function ensureDailyPlan(
     return;
   }
   if (!Array.isArray(templates)) return;
+
+  // Reconcile the exact retired starter routine in existing workspaces while
+  // leaving unrelated, user-authored recurring tasks untouched.
+  const retired = new Set([
+    "Review the 5 AM batch: 10 job listings and 10 trigger-based outreach targets",
+    "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners",
+    "Review the 8 AM batch: 10 fresh job listings and 10 trigger-based outreach targets",
+  ]);
+  const legacyOutreach = "Complete and log 20 targeted client outreach actions";
+  let routineChanged = false;
+  const reconciled = templates.filter((item) => {
+    if (retired.has(String(item.title || ""))) {
+      routineChanged = true;
+      return false;
+    }
+    return true;
+  });
+  const legacyIndex = reconciled.findIndex((item) => item.title === legacyOutreach);
+  if (legacyIndex >= 0) {
+    reconciled.splice(legacyIndex, 1,
+      { title: "Research 10 new/emerging businesses and 10 established businesses", category: "Client Pipeline", priority: "high", estimated_minutes: 45 },
+      { title: "Send 20 relevant client outreach messages/proposals and log each interaction", category: "Client Pipeline", priority: "high", estimated_minutes: 60 },
+    );
+    routineChanged = true;
+  }
+  const ensureRoutineTask = (title: string, category: string, minutes: number) => {
+    if (!reconciled.some((item) => item.title === title)) {
+      reconciled.push({ title, category, priority: "high", estimated_minutes: minutes });
+      routineChanged = true;
+    }
+  };
+  ensureRoutineTask("Publish one useful piece of content today on Instagram and/or WhatsApp", "Personal Brand", 45);
+  ensureRoutineTask("Research and contact 3 promotional partners for Graphic Design with AI", "Course Growth", 30);
+  if (routineChanged) {
+    await db.prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE user_id=?")
+      .run(JSON.stringify(reconciled), now(), userId);
+    templates = reconciled;
+  }
   if (
     await db
       .prepare("SELECT day FROM generated_days WHERE user_id=? AND day=?")
