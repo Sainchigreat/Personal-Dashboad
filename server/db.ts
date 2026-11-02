@@ -194,6 +194,27 @@ for (const setting of savedSettings) {
   }
 }
 
+// Ensure existing owner workspaces also receive the corrected daily course-partner task.
+const coursePartnerTemplate = {
+  title: "Find and contact 3 partners to share the AI design course",
+  category: "Course Growth",
+  priority: "high",
+  estimated_minutes: 25,
+};
+for (const setting of db.prepare("SELECT id,daily_templates FROM settings").all() as Array<{id:string;daily_templates:string}>) {
+  try {
+    const current = JSON.parse(setting.daily_templates);
+    if (!Array.isArray(current)) continue;
+    const corrected = current.filter((item) => !/3 potential Next Chapter promotional partners/i.test(String(item?.title || "")));
+    if (!corrected.some((item) => String(item?.title || "") === coursePartnerTemplate.title)) {
+      corrected.push(coursePartnerTemplate);
+      db.prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE id=?").run(JSON.stringify(corrected), now(), setting.id);
+    }
+  } catch {
+    // Preserve settings that cannot be parsed automatically.
+  }
+}
+
 // Migrate only the untouched legacy starter routine; preserve personalised routines.
 const legacyTemplates = [
   {
