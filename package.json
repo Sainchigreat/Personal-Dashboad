@@ -12,7 +12,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"server/**/*.ts\" \"scripts/**/*.{ts,js}\" \"tests/**/*.ts\" \"*.{json,md,html,ts}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"server/**/*.ts\" \"scripts/**/*.{ts,js}\" \"tests/**/*.ts\" \"*.{json,md,html,ts}\"",
     "build:preview": "npm run build && tsx scripts/build-preview.ts",
-    "verify:cloud": "node scripts/verify-cloud.mjs"
+    "verify:cloud": "node scripts/verify-cloud.mjs",
+    "verify:db": "tsx scripts/verify-db.ts",
+    "import:sqlite": "tsx scripts/import-sqlite.ts"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.5",
@@ -23,8 +25,10 @@
     "express": "^4.21.2",
     "helmet": "^8.1.0",
     "lucide-react": "^0.468.0",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "serverless-http": "^4.0.0",
     "tsx": "^4.23.15",
     "zod": "^4.6.7"
   },
@@ -32,6 +36,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.25",
     "@types/node": "^22.13.10",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",

@@ -20,6 +20,7 @@ import {
   dateInZone,
 } from "./db";
 import teamRouter, { hashInvite } from "./team";
+import { checkPostgresConnection, isPostgresConfigured } from "./postgres";
 import {
   configs,
   foreignKeys,
@@ -181,6 +182,24 @@ if (
     "Chisom Ogbonna",
   );
 }
+
+// Server-side PostgreSQL connection probe. Uses DATABASE_URL only; it never
+// exposes the connection string, and it performs a real write/read round trip
+// on an additive metadata table. Fails clearly when the secret is missing.
+app.get("/api/pg/health", async (_req, res, next) => {
+  if (!isPostgresConfigured()) {
+    return res.status(503).json({
+      error: "DATABASE_URL is not configured.",
+      where: "Server / Netlify environment variables (never a VITE_ variable).",
+    });
+  }
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await checkPostgresConnection("api-pg-health"));
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get("/api/auth/status", (req, res) => {
   const session = getSession(req);
@@ -888,8 +907,14 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     .json({ error: "Something went wrong. Your data was not saved." });
 });
 
-app.listen(port, "0.0.0.0", () =>
-  console.log(
-    `Momentum OS API listening on ${port}${preview ? " (isolated preview mode)" : ""}`,
-  ),
-);
+// Export the app so a Netlify Function can wrap it. Importing must NOT call
+// app.listen(); direct execution (npm start / dev / tests) still listens.
+export { app };
+
+if (process.env.MOMENTUM_IMPORT_ONLY !== "1") {
+  app.listen(port, "0.0.0.0", () =>
+    console.log(
+      `Momentum OS API listening on ${port}${preview ? " (isolated preview mode)" : ""}`,
+    ),
+  );
+}

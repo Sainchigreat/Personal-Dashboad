@@ -18,6 +18,18 @@ successor to the single-instance SQLite adapter in `server/db.ts`.
 Migrations live in `supabase/migrations/` and are applied in order. They are
 idempotent and additive — re-running them does not delete records.
 
+### Two coexisting schemas (reconciliation)
+
+`public` is the Supabase Auth / RLS / Edge Function backend (migrations 1–3).
+Migration `20261102000400_momentum_os_compat.sql` adds a **separate** `momentum_os`
+schema containing the *exact* PostgreSQL translation of `server/schema.sql`
+(TEXT UUID ids, `users`, `auth_sessions`, all 28 tables, 52 foreign keys, 9
+indexes) for the Express/Netlify path with its custom bcrypt/cookie/CSRF auth.
+It was added because the existing `public` schema could not be replaced without
+dropping tables — which was explicitly out of scope. Nothing in `public` was
+altered. See `docs/SUPABASE-AUDIT.md` for the full audit, the live write/read
+round trip and the evidence-based status table.
+
 ## Data model
 
 - **Personal:** `profiles`, `settings`, `cycles`, `products`, `projects`,

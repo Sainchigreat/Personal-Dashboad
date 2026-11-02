@@ -57,6 +57,18 @@ npm run verify:cloud   # optional health check from a machine with internet acce
 
 Full schema, endpoint list and limits: [`supabase/README.md`](supabase/README.md). SQL source of truth: `supabase/migrations/`; API source: `supabase/functions/momentum-api/index.ts`.
 
+### Safe connection to the existing project
+
+An evidence-based audit of the **exact** Momentum project (tables, migrations, policies, data), the additive `momentum_os` PostgreSQL schema, the server-side `pg` layer, the SQLite→PostgreSQL import script and the Netlify configuration are documented in [`docs/SUPABASE-AUDIT.md`](docs/SUPABASE-AUDIT.md). No existing table or row was dropped, renamed or overwritten; no new Supabase project was created. Env var **names only**: `DATABASE_URL` (server-only secret, Netlify Environment variables), `PG_POOL_MAX`, `MOMENTUM_PG_ROUTES`; the browser receives only the public `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+
+```bash
+npm run verify:cloud   # live Edge Function health
+npm run verify:db      # real PostgreSQL write/read round trip (needs DATABASE_URL)
+npm run import:sqlite  # repeatable FK-safe import, only if production SQLite data exists
+```
+
+> The Express route handlers still use `node:sqlite` locally. `server/postgres.ts` is the new async data layer and the Netlify Function is deliberately fail-closed until those handlers are converted — see the status table in the audit document.
+
 > **Integration status.** The existing workspace pages still read and write through the local Express/SQLite API. The cloud backend is live and fully usable from the Momentum Cloud page; wiring the rest of the UI to the cloud adapter is the next step. The AI layer is deterministic (`rules-v1`) and never fabricates sales, outreach or completed work — an external model can replace it later.
 
 ## Run locally
