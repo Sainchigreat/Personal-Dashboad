@@ -105,8 +105,7 @@ export function dateInZone(timeZone: string, date = new Date()): string {
 
 const defaultTemplates = [
   {
-    title:
-      "Publish today's Graphic Design with AI course promotion on WhatsApp Status",
+    title: "Publish today's Graphic Design with AI course promotion",
     category: "Course Growth",
     priority: "high",
     estimated_minutes: 20,
@@ -118,40 +117,22 @@ const defaultTemplates = [
     estimated_minutes: 30,
   },
   {
-    title: "Complete and log 20 targeted client outreach actions",
+    title: "Research and contact 10 new/emerging + 10 established businesses",
     category: "Client Pipeline",
     priority: "high",
     estimated_minutes: 75,
   },
   {
-    title:
-      "Review the 5 AM batch: 10 job listings and 10 trigger-based outreach targets",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 25,
-    scheduled_time: "05:00",
-  },
-  {
-    title:
-      "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 25,
-    scheduled_time: "06:00",
-  },
-  {
-    title:
-      "Review the 8 AM batch: 10 fresh job listings and 10 trigger-based outreach targets",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 25,
-    scheduled_time: "08:00",
-  },
-  {
-    title: "Capture one useful idea or lesson for your personal brand",
+    title: "Capture one useful AI, design or creative-industry development",
     category: "Personal Brand",
     priority: "medium",
-    estimated_minutes: 15,
+    estimated_minutes: 20,
+  },
+  {
+    title: "Publish today's personal-brand content",
+    category: "Personal Brand",
+    priority: "high",
+    estimated_minutes: 45,
   },
   {
     title: "Record today's wins, blockers and tomorrow's first action",
@@ -161,7 +142,53 @@ const defaultTemplates = [
   },
 ];
 
-// Migrate only the untouched starter routine; preserve personalised routines.
+// Migrate only exact obsolete job-search/LinkedIn batches and the old generic
+// outreach reminder. Preserve every other personalised recurring task.
+const obsoleteBatchTitles = new Set([
+  "Review the 5 AM batch: 10 job listings and 10 trigger-based outreach targets",
+  "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners",
+  "Review the 8 AM batch: 10 fresh job listings and 10 trigger-based outreach targets",
+]);
+const oldGenericOutreach =
+  "Complete and log 20 targeted client outreach actions";
+const alignedOutreach =
+  "Research and contact 10 new/emerging + 10 established businesses";
+const savedSettings = db
+  .prepare("SELECT id,daily_templates FROM settings")
+  .all() as Array<{ id: string; daily_templates: string }>;
+for (const setting of savedSettings) {
+  try {
+    const current = JSON.parse(setting.daily_templates);
+    if (!Array.isArray(current)) continue;
+    let changed = false;
+    const next = current
+      .filter((item) => {
+        if (obsoleteBatchTitles.has(String(item?.title || ""))) {
+          changed = true;
+          return false;
+        }
+        return true;
+      })
+      .map((item) => {
+        if (String(item?.title || "") !== oldGenericOutreach) return item;
+        changed = true;
+        return {
+          ...item,
+          title: alignedOutreach,
+          estimated_minutes: item.estimated_minutes || 75,
+          scheduled_time: "",
+        };
+      });
+    if (changed) {
+      db.prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE id=?")
+        .run(JSON.stringify(next), now(), setting.id);
+    }
+  } catch {
+    // Leave malformed or user-managed settings untouched for manual repair.
+  }
+}
+
+// Migrate only the untouched legacy starter routine; preserve personalised routines.
 const legacyTemplates = [
   {
     title: "Follow up on course enquiries",
