@@ -10,3 +10,7 @@ data/
 *.sqlite-wal
 coverage/
 .DS_Store
+
+# Python tooling (PDF report generator)
+__pycache__/
+*.pyc
