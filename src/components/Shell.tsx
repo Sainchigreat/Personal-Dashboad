@@ -22,6 +22,7 @@ import {
   Settings2,
   Sparkles,
   UsersRound,
+  Target,
   X,
   type LucideIcon,
 } from "lucide-react";
