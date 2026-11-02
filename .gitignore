@@ -1,0 +1,16 @@
+node_modules/
+dist/
+preview-dist/
+.env
+.env.*
+!.env.example
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+coverage/
+.DS_Store
+
+# Python tooling (PDF report generator)
+__pycache__/
+*.pyc

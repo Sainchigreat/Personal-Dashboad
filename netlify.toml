@@ -1,0 +1,53 @@
+# Momentum OS — Netlify build configuration (zero-cost free tier).
+# SERVER-ONLY secrets are configured in Netlify UI:
+#   Site configuration -> Environment variables
+# Names only, never values, never committed:
+#   DATABASE_URL         pooled PostgreSQL connection string from the existing
+#                        Supabase "Momentum" project Connect panel.
+#   NODE_ENV             "production" (enables Secure cookies + built client).
+#   DATA_DIR             optional local scratch path (not used when PG is active).
+# Public browser values (safe, publishable only):
+#   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+# Never put DATABASE_URL, a DB password, or a service-role key in a VITE_ variable.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--no-audit --no-fund"
+
+[functions]
+  node_bundler = "esbuild"
+  # Keep express (and the async-error patch that reaches into express/lib/router)
+  # external so both resolve to the same runtime module instance.
+  external_node_modules = ["express", "express-async-errors"]
+
+# Local `netlify dev` mirrors the deployed redirects and functions.
+[dev]
+  port = 8888
+  publish = "dist"
+  functions = "netlify/functions"
+
+# API routing MUST precede the SPA fallback. :splat preserves the sub-path;
+# netlify/functions/api.ts normalises either path shape back to /api/*.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
