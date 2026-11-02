@@ -296,6 +296,22 @@ export function createWorkspace(
       stamp,
       stamp,
     );
+    const weeklyGoals = {
+      version: 1,
+      goals: [
+        { id: "publish", title: "Publish every day", target: 7, current: 0, unit: "days", task_ids: [], notes: "Monday: selected post. Tuesday: Carousel 1. Wednesday: Brand Identity Project 1 reveal plus campaign output. Thursday: Carousel 2 plus YouTube tutorial. Friday: Next Chapter content. Saturday: Brand Identity Project 2 installment. Sunday: Creative Project 2 output." },
+        { id: "sales", title: "Sell Graphic Design with AI", target: 17, current: 0, unit: "paid buyers", task_ids: [], notes: "Weekly pace toward the existing 68-sale November target. Count paid buyers only." },
+        { id: "content-bank", title: "Develop the monthly content bank", target: 1, current: 0, unit: "content bank", task_ids: [], notes: "Create the monthly content plan, weekly calendar, ideas and drafts." },
+        { id: "next-chapter", title: "Host Next Chapter", target: 1, current: 0, unit: "live session", task_ids: [], notes: "Friday live session. Deliver main flyer, speaker-bio flyer and separate advertising flyer. Track speaker biography, contact, confirmation, agreed/date options, reminders and asset approvals." },
+        { id: "youtube", title: "Publish the YouTube free tutorial", target: 1, current: 0, unit: "video", task_ids: [], notes: "Publish by Thursday and share with the community." },
+        { id: "studio", title: "Complete two Creative Studio projects", target: 2, current: 0, unit: "projects", task_ids: [], notes: "Project 1: social-media campaign, Monday–Wednesday. Project 2: simpler flyer, Thursday–Friday; publish output Sunday." },
+        { id: "brand", title: "Advance two brand-identity projects", target: 2, current: 0, unit: "projects", task_ids: [], notes: "Project 1 first content/reveal ready Wednesday. Project 2 second installment Saturday." }
+      ],
+      reflection_priorities: "Daily: course promotion and warm-lead follow-up; research 10 new/emerging and 10 established businesses; separately log actual outreach/proposals; research and contact 3 promotional partners for Graphic Design with AI (not Next Chapter); capture AI/design industry opportunities; publish one useful piece. Monday: choose both projects, write monthly content plan and Next Chapter script, hold team strategy meeting, assign the three Next Chapter flyer assets, recruit a Social Media Manager (not Community Manager), publish and prospect."
+    };
+    db.prepare(
+      "INSERT INTO weekly_reviews(id,user_id,week_start,wins,blockers,lessons,priorities,created_at,updated_at) VALUES (?,?,?,'','','',?,?,?)"
+    ).run(id(), userId, "2026-11-02", JSON.stringify(weeklyGoals), stamp, stamp);
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
