@@ -6,7 +6,6 @@ Requires: reportlab (pip install reportlab)
 All content is evidence-based; see docs/SUPABASE-AUDIT.md for the live audit.
 """
 from pathlib import Path
-import subprocess
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -22,13 +21,6 @@ from reportlab.platypus import (
 )
 
 OUT = Path(__file__).resolve().parent / "Momentum-OS-Complete-Work-and-Status-Report.pdf"
-try:
-    HEAD = subprocess.check_output(
-        ["git", "rev-parse", "--short", "HEAD"],
-        cwd=Path(__file__).resolve().parent.parent,
-    ).decode().strip()
-except Exception:
-    HEAD = "working tree"
 W = 174 * mm
 
 NAVY = colors.HexColor("#12233F")
@@ -466,8 +458,8 @@ story += [table(["Artefact", "Detail"],
                  ["414efd2", P("feat: build Momentum AI backend on Supabase - 20 files, 2541 insertions")],
                  ["d428730", P("feat: safely connect Momentum OS to the existing Supabase project - 16 files, 1437 insertions")],
                  ["fc13437 / 9be221f", P("Complete work & status report PDF + reproducible generator; ignore Python bytecode")],
-                 [HEAD, P("HEAD at generation - Netlify deployment stage: build config, Function routing normalisation, deploy verification script, 8 handler tests, deployment guide")],
-                 ["PR #4", P("OPEN against main, https://github.com/Sainchigreat/Personal-Dashboad/pull/4, 16 commits, CI green, audit comment added")],
+                 ["27e4b7b", P("feat: Netlify deployment readiness, function routing, deploy verification script, 8 handler tests and deployment guide")],
+                 ["PR #4", P("OPEN against main, https://github.com/Sainchigreat/Personal-Dashboad/pull/4, 18 commits, CI green, audit comment added")],
                  ["CI runs", P("41385820560, 41385805019, 41392237352, 41393367495, 41393373991, 41413966836 and 41414096251 all green")],
                  ["Live API", P("https://ppfjotymclhbihkjvyxt.supabase.co/functions/v1/momentum-api/health returns status ok")],
                  ["Live preview", P("Process momentum-os-f7d6e877 (dev preview 5173 / API 3001) and momentum-os-production-build-pre-7081534f (dist/ on 4173); both HTTP 200")],
