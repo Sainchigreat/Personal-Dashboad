@@ -10,6 +10,7 @@ import Chapter from "./pages/Chapter";
 import Brand from "./pages/Brand";
 import Pipeline from "./pages/Pipeline";
 import Review from "./pages/Review";
+import Goals from "./pages/Goals";
 import Settings from "./pages/Settings";
 import TeamWorkspace from "./pages/TeamWorkspace";
 import TeamPortal from "./pages/TeamPortal";
@@ -26,6 +27,7 @@ function Workspace() {
     brand: <Brand />,
     pipeline: <Pipeline />,
     review: <Review />,
+    goals: <Goals />,
     team: <TeamWorkspace auth={auth} />,
     settings: <Settings />,
   };
