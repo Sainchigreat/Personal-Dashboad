@@ -27,8 +27,13 @@ schema containing the *exact* PostgreSQL translation of `server/schema.sql`
 indexes) for the Express/Netlify path with its custom bcrypt/cookie/CSRF auth.
 It was added because the existing `public` schema could not be replaced without
 dropping tables — which was explicitly out of scope. Nothing in `public` was
-altered. See `docs/SUPABASE-AUDIT.md` for the full audit, the live write/read
-round trip and the evidence-based status table.
+altered.
+
+The Express API (`server/db.ts`, `server/index.ts`, `server/team.ts`) is now fully
+async and uses this `momentum_os` schema whenever `DATABASE_URL` is set, falling
+back to local SQLite only for preview/dev/tests. See `docs/SUPABASE-AUDIT.md`
+for the full audit, the live write/read round trip, the async conversion record
+and the evidence-based status table.
 
 ## Data model
 

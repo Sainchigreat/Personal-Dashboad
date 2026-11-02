@@ -67,7 +67,7 @@ npm run verify:db      # real PostgreSQL write/read round trip (needs DATABASE_U
 npm run import:sqlite  # repeatable FK-safe import, only if production SQLite data exists
 ```
 
-> The Express route handlers still use `node:sqlite` locally. `server/postgres.ts` is the new async data layer and the Netlify Function is deliberately fail-closed until those handlers are converted — see the status table in the audit document.
+The Express data layer is now fully async. With no `DATABASE_URL` it uses the original local SQLite database (preview, dev and tests); with `DATABASE_URL` set it uses the `momentum_os` PostgreSQL schema on the existing Momentum project via `server/postgres.ts` — every query awaited, every route handler async, transactions kept atomic with a per-request pooled client. Auth, CSRF, ownership scoping, role checks, API response shapes and export redaction are preserved. Verified with 10 PostgreSQL acceptance tests plus the 47 existing SQLite-mode tests; see the status table in the audit document. A deployed Netlify function reaching Supabase has not been verified from this sandbox — that still needs `DATABASE_URL` in Netlify and a deployed URL.
 
 > **Integration status.** The existing workspace pages still read and write through the local Express/SQLite API. The cloud backend is live and fully usable from the Momentum Cloud page; wiring the rest of the UI to the cloud adapter is the next step. The AI layer is deterministic (`rules-v1`) and never fabricates sales, outreach or completed work — an external model can replace it later.
 

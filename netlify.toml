@@ -4,10 +4,8 @@
 # Names only, never values, never committed:
 #   DATABASE_URL         pooled PostgreSQL connection string from the existing
 #                        Supabase "Momentum" project Connect panel.
-#   MOMENTUM_PG_ROUTES   set to "enabled" ONLY once the Express route layer has
-#                        been converted to the PostgreSQL backend.
 #   NODE_ENV             "production" (enables Secure cookies + built client).
-#   DATA_DIR             "/tmp/momentum-data" (ephemeral; not used once PG is active).
+#   DATA_DIR             optional local scratch path (not used when PG is active).
 # Public browser values (safe, publishable only):
 #   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 # Never put DATABASE_URL, a DB password, or a service-role key in a VITE_ variable.

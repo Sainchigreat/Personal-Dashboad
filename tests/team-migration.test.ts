@@ -61,7 +61,7 @@ describe("team workspace migration", () => {
           "tsx",
           "--input-type=module",
           "-e",
-          `const m = await import('./server/db.ts'); m.ensureTeamOwnerWorkspace('legacy-owner'); m.ensureTeamOwnerWorkspace('legacy-owner'); m.db.close();`,
+          `const m = await import('./server/db.ts'); await m.ensureTeamOwnerWorkspace('legacy-owner'); await m.ensureTeamOwnerWorkspace('legacy-owner'); await m.db.close();`,
         ],
         { cwd: process.cwd(), env: { ...process.env, DATA_DIR: directory } },
       );
@@ -167,7 +167,7 @@ describe("team workspace migration", () => {
           "tsx",
           "--input-type=module",
           "-e",
-          `const m = await import('./server/db.ts'); m.db.close();`,
+          `const m = await import('./server/db.ts'); await m.db.close();`,
         ],
         { cwd: process.cwd(), env: { ...process.env, DATA_DIR: directory } },
       );

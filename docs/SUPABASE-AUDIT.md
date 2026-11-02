@@ -77,17 +77,29 @@ That is a genuine write/read persistence round trip across connections, with not
 | `scripts/verify-db.ts` | `npm run verify:db` — real DB round trip from a machine with DB access |
 | `scripts/import-sqlite.ts` | `npm run import:sqlite` — repeatable FK-safe import, `ON CONFLICT DO NOTHING`, row-count report, never deletes |
 | `tests/postgres.test.ts` | unit tests for the translation layer |
+| `tests/postgres-integration.test.ts` | 10 acceptance tests running the real Express app against a real PostgreSQL engine (PGlite) with `pg` mocked — auth, CSRF, isolation, idempotent planner, atomic rollover/checklists, write/read persistence, export redaction, session survival |
 | `netlify.toml` | build/publish/functions, `/api/*` redirect before SPA fallback, security headers |
-| `netlify/functions/api.ts` | Netlify Functions entry point, **fail-closed** until the pg route layer is active |
-| `server/index.ts` | exports `app`; `app.listen()` only on direct execution |
+| `netlify/functions/api.ts` | Netlify Functions entry point; serves the async PostgreSQL API (fails closed only when `DATABASE_URL` is missing) |
+| `server/index.ts`, `server/team.ts`, `server/db.ts` | fully converted to `await`ed queries; `db` selects SQLite locally or `momentum_os`/`pg` when `DATABASE_URL` is set |
+| `server/express-async-errors.d.ts` | side-effect patch so Express 4 forwards rejected async handlers to the error middleware |
+
+## 5b. Async conversion (completed)
+
+Every `db.prepare(...).get/all/run` and `db.exec(...)` call in `server/db.ts`, `server/index.ts` and `server/team.ts` is now awaited; all affected helpers, middleware and route handlers are `async`. The `db` object exposes one async `Statement` API with two backends:
+
+- **SQLite** (no `DATABASE_URL`): local preview, development and the existing test suite. Keeps the additive SQLite migrations, custom bcrypt/cookie/CSRF auth and exact behaviour.
+- **PostgreSQL** (`DATABASE_URL` set): queries are translated by `server/postgres.ts` (`?`→`$n`, `INSERT OR IGNORE`→`ON CONFLICT DO NOTHING`, `BEGIN IMMEDIATE`→`BEGIN`, `COUNT(*)::int`, `momentum_os.` qualification, `23505`/`23503` error mapping) and executed on the pooled connection.
+
+`withDbContext` installs a per-request `AsyncLocalStorage` transaction state, so `BEGIN` / `COMMIT` / `ROLLBACK` keep the original transaction boundaries on a single pooled client (with automatic rollback/release if a response finishes with a transaction open). `forEach` insert loops became awaited `for...of` loops. API response shapes, Zod validation, ownership scoping, role checks, invite expiry, CSRF and export redaction were preserved.
+
+**Verification:** 10/10 acceptance tests pass against a real PostgreSQL engine — registration + seeded defaults, CSRF rejection, idempotent daily plan, write/read persistence across requests, atomic Next Chapter checklists, atomic cycle rollover with duplicate rejection, credential-free export, team-account isolation from owner data, and data survival across logout/login. 47 existing SQLite-mode tests still pass.
 
 ## 6. Environment variable NAMES only (no values)
 
 | Name | Where | Exposure |
 | --- | --- | --- |
 | `DATABASE_URL` | Netlify → Site configuration → Environment variables; local `.env.local` | **server-only secret** — never `VITE_`, never committed |
-| `PG_POOL_MAX` | same | server-only, optional |
-| `MOMENTUM_PG_ROUTES` | same | server-only, enables the function after the route refactor |
+| `PG_POOL_MAX` | same | server-only, optional (default 5, serverless-safe) |
 | `MOMENTUM_IMPORT_ONLY` | set by the Netlify wrapper | server-only, stops `app.listen()` on import |
 | `DATA_DIR`, `NODE_ENV`, `PORT` | same | server-only |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | `.env.local` / Netlify | public publishable values only |
@@ -102,10 +114,10 @@ That is a genuine write/read persistence round trip across connections, with not
 | No new Supabase project | ✅ | `list_projects` returns one project |
 | Versioned PostgreSQL migration | ✅ | 4th migration recorded; `supabase/migrations/` in Git |
 | Database connected (real write/read round trip) | ✅ | §4, two separate server-side requests |
-| Build / type-check | ✅ | `npm run build` |
-| Automated tests | ✅ | `npm test` |
-| Express routes converted to async PostgreSQL | ⏳ **staged** | `server/postgres.ts` helpers exist; `server/index.ts` / `server/team.ts` still use `node:sqlite` locally |
-| Netlify Functions serving real PostgreSQL data | ⏳ **not deployed** | wrapper is fail-closed (503) until the route refactor is done; no Netlify connector/URL available here |
-| Site deployed & API health verified on Netlify | ❌ **not verified** | cannot be claimed from this sandbox; no Netlify integration or deployed URL |
+| Build / type-check | ✅ | `npm run build` — `tsc --noEmit` + Vite build clean |
+| Automated tests | ✅ | `npm test` — 13 files / 57 tests pass (47 SQLite-mode + 10 PostgreSQL acceptance) |
+| Express routes converted to async PostgreSQL | ✅ | §5b, all three server files awaited; verified against a real PostgreSQL engine |
+| Netlify Functions entry point ready | ✅ | wrapper serves the async app whenever `DATABASE_URL` is set; fails closed only when the secret is missing |
+| Site deployed & API health verified on Netlify | ❌ **not verified** | cannot be claimed from this sandbox; no Netlify connector or deployed URL |
 
-> This sandbox permits outbound traffic only to GitHub/npm/PyPI hosts, so a `pg` connection cannot be opened from Node here. `npm run verify:db` is provided for the user's machine or Netlify build. The database-side round trip above was executed server-side through the Supabase SQL endpoint and is real; the Node `pg` path remains unverified locally and is reported as such.
+> This sandbox permits outbound traffic only to GitHub/npm/PyPI hosts, so a live `pg` connection to Supabase cannot be opened from Node here. The async path was therefore verified against an in-process real PostgreSQL engine (PGlite) using the exact `momentum_os` migration, plus the live server-side SQL round trip in §4. `npm run verify:db` remains available for a machine/host with database access. What is still NOT proven is a deployed Netlify function reaching Supabase over the network — that requires `DATABASE_URL` in Netlify and a deployed URL, neither of which is available here.

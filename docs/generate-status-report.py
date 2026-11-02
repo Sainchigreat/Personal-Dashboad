@@ -6,6 +6,7 @@ Requires: reportlab (pip install reportlab)
 All content is evidence-based; see docs/SUPABASE-AUDIT.md for the live audit.
 """
 from pathlib import Path
+import subprocess
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -21,6 +22,13 @@ from reportlab.platypus import (
 )
 
 OUT = Path(__file__).resolve().parent / "Momentum-OS-Complete-Work-and-Status-Report.pdf"
+try:
+    HEAD = subprocess.check_output(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=Path(__file__).resolve().parent.parent,
+    ).decode().strip()
+except Exception:
+    HEAD = "working tree"
 W = 174 * mm
 
 NAVY = colors.HexColor("#12233F")
@@ -217,11 +225,11 @@ story += [P("At a glance", "H1"), divider(), Spacer(1, 3 * mm),
                 [["GitHub discovery", st("DONE"), P("Repo found; main had only a README; full app recovered from another branch")],
                  ["Supabase database", st("DONE"), P("4 migrations, 30 public + 29 momentum_os tables, 41 RLS policies, live API")],
                  ["Safe connection", st("DONE"), P("Real write/read round trip; no new project, no data deleted")],
-                 ["App + Cloud page", st("PARTIAL"), P("Cloud page is Supabase-backed; main workspace pages still use SQLite")],
-                 ["Build / tests / CI", st("VERIFIED"), P("Build passes, 47 tests / 12 files pass, Actions green")],
+                 ["App + Cloud page", st("DONE"), P("Cloud page is Supabase-backed; all workspace pages now use one async API backed by PostgreSQL when DATABASE_URL is set")],
+                 ["Build / tests / CI", st("VERIFIED"), P("Build passes, 57 tests / 13 files pass (10 PostgreSQL acceptance), Actions green")],
                  ["Live preview", st("DONE"), P("Vite + API running on ports 5173 / 3001")],
-                 ["Netlify deployment", st("NOT VERIFIED"), P("No Netlify connector or URL; deployed site cannot be inspected or tested")],
-                 ["Express -> PostgreSQL", st("PARTIAL"), P("pg layer built and tested; route handlers not converted yet")],
+                 ["Netlify deployment", st("NOT VERIFIED"), P("Function entry point ready, but no Netlify connector or URL; deployed site cannot be inspected or tested")],
+                 ["Express -> PostgreSQL", st("DONE"), P("All three server files awaited; verified against a real PostgreSQL engine and live Supabase SQL shapes")],
                  ["Production go-live", st("NOT DONE"), P("PR #4 not merged; no owner account; signup still open; no external deploy")]],
                 [34 * mm, 24 * mm, W - 58 * mm]),
           Spacer(1, 4 * mm),
@@ -242,17 +250,18 @@ story += [P("You asked me to find the Personal Dashboard code in the connected G
             "Supabase project. I built a PostgreSQL schema with RLS, reporting views, RPCs, audit "
             "trail, a deterministic planner/AI brief, a deployed Edge Function API, a browser "
             "Momentum Cloud page, and later an additive legacy-compatible schema plus a server-side "
-            "pg layer, Netlify configuration and documentation. Everything was committed and pushed "
+            "pg layer, Netlify configuration and documentation, and finally the completed async "
+            "Express-to-PostgreSQL conversion. Everything was committed and pushed "
             "to the session branch and is in open PR #4.", "Body"),
           Spacer(1, 2 * mm),
-          P("VERIFIED: production build, 47 automated tests, green CI, live Edge Function /health, "
+          P("VERIFIED: production build, 57 automated tests (10 PostgreSQL acceptance), green CI, "
+            "live Edge Function /health, "
             "a real server-side database write/read persistence round trip, RLS owner-vs-team "
             "isolation, and an in-app live preview.", "Body"),
           Spacer(1, 2 * mm),
-          P("NOT VERIFIED / NOT DONE: an external Netlify production deployment, the full conversion "
-            "of the Express route handlers from SQLite to PostgreSQL, an owner account, production "
-            "signup lockdown, a real LLM, scheduled jobs, and merging PR #4. The Netlify Functions "
-            "wrapper is intentionally fail-closed (HTTP 503) so it can never silently lose data.", "Body"),
+          P("NOT VERIFIED / NOT DONE: an external Netlify production deployment, an owner account, "
+            "production signup lockdown, a real LLM, scheduled jobs, and merging PR #4. The Netlify "
+            "Functions wrapper is ready and fails closed only when DATABASE_URL is missing.", "Body"),
           Spacer(1, 4 * mm)]
 
 story += [P("2. What you asked for (chronological)", "H1"), divider(), Spacer(1, 3 * mm)]
@@ -332,8 +341,11 @@ story += [P("5.2 Application, connection and deployment wiring", "H2"),
                  ["Connection endpoint", P("GET /api/pg/health - real DB round trip, Cache-Control no-store, fails closed with 503 when DATABASE_URL is absent, never leaks the connection string."), st("DONE")],
                  ["Verification + import scripts", P("scripts/verify-db.ts (npm run verify:db) and scripts/import-sqlite.ts (npm run import:sqlite) - FK-safe order, ON CONFLICT DO NOTHING, two-pass tasks self-FK restore, row-count report, no deletion."), st("DONE")],
                  ["Netlify configuration", P("netlify.toml - npm run build, publish dist, functions netlify/functions, Node 22, /api/* redirect BEFORE SPA fallback, security headers. Env var NAMES documented, no values."), st("DONE")],
-                 ["Netlify Functions wrapper", P("netlify/functions/api.ts - serverless-http wrapper; server/index.ts now exports app and only calls listen() on direct execution. Deliberately fail-closed (503) until DATABASE_URL and MOMENTUM_PG_ROUTES are ready."), st("DONE")],
-                 ["CSP", P("Production connect-src extended to include VITE_SUPABASE_URL so the browser can reach Supabase."), st("DONE")]],
+                 ["server/index.ts export", P("Express app exported without auto-listening (MOMENTUM_IMPORT_ONLY), so the Netlify Function can wrap it."), st("DONE")],
+                 ["CSP", P("Production connect-src extended to include VITE_SUPABASE_URL so the browser can reach Supabase."), st("DONE")],
+                 ["Async conversion (COMPLETED)", P("Every db.prepare().get/all/run and db.exec() in server/db.ts, server/index.ts and server/team.ts is awaited; all helpers, middleware and route handlers are async. One Db interface with SQLite (local) and PostgreSQL (DATABASE_URL) backends; per-request AsyncLocalStorage client keeps BEGIN/COMMIT/ROLLBACK atomic; forEach insert loops became awaited for...of."), st("DONE")],
+                 ["express-async-errors", P("Side-effect patch so Express 4 forwards rejected async handlers to the existing error middleware; response shapes, Zod validation, CSRF, ownership/role checks and export redaction preserved."), st("DONE")],
+                 ["Netlify Functions wrapper", P("Now serves the async PostgreSQL API whenever DATABASE_URL is set; fails closed with 503 only when the secret is missing, preventing an accidental ephemeral SQLite fallback."), st("DONE")]],
                 [40 * mm, W - 62 * mm, 22 * mm]),
           Spacer(1, 4 * mm)]
 
@@ -342,7 +354,7 @@ story += [P("5.3 Documentation, tests and repository hygiene", "H2"),
                 [["docs/SUPABASE-AUDIT.md", P("Full evidence-based audit: exact project identity, pre-existing objects, data counts, additive changes, architecture reconciliation, round-trip proof, env var names, status table."), st("DONE")],
                  ["README.md / supabase/README.md", P("Cloud backend architecture, env vars, integration status, limitations, two-schema reconciliation, PR/branch instructions."), st("DONE")],
                  [".env.example / .env.local", P("Documents server-only DATABASE_URL and public VITE_* names. .env.local is gitignored and holds only the publishable key; no service-role or DB password in Git."), st("DONE")],
-                 ["Unit + integration tests", P("tests/postgres.test.ts (6 tests) and tests/pg-health.test.ts (2 tests) added; existing suites preserved. 12 files / 47 tests pass."), st("DONE")],
+                 ["Unit + acceptance tests", P("tests/postgres.test.ts (6), tests/pg-health.test.ts (2) and tests/postgres-integration.test.ts (10, real PostgreSQL engine via PGlite) added; existing suites preserved. 13 files / 57 tests pass."), st("DONE")],
                  ["CI workflow", P(".github/workflows/ci.yml includes the session branch; Actions run 41392237352 green (verify in 31s)."), st("DONE")],
                  ["Secret scan", P("git grep found no connection strings, service-role keys or DB passwords in tracked files; only a commented placeholder."), st("DONE")],
                  ["Git state recovery", P("Sandbox re-cloned .git (HEAD back at 2f4cf10) while keeping working files; re-synced with a non-destructive reset --mixed to the remote 414efd2. Nothing lost."), st("DONE")],
@@ -354,7 +366,7 @@ story += [P("5.3 Documentation, tests and repository hygiene", "H2"),
 story += [P("6. Verification evidence", "H1"), divider(), Spacer(1, 3 * mm)]
 story += [table(["Check", "Result", "How it was proven"],
                 [["Production build", st("VERIFIED"), P("npm run build - tsc --noEmit + vite build succeed; only a >500 kB chunk-size advisory")],
-                 ["Automated tests", st("VERIFIED"), P("npm test - 12 files, 47 tests passing")],
+                 ["Automated tests", st("VERIFIED"), P("npm test - 13 files, 57 tests passing (47 SQLite-mode + 10 PostgreSQL acceptance)")],
                  ["GitHub Actions CI", st("VERIFIED"), P("gh run watch 41392237352 --exit-status - green; only Node 20 action deprecation / Ubuntu label annotations")],
                  ["Live Edge Function /health", st("VERIFIED"), P("Public fetch: {\"status\":\"ok\",\"tables\":30,\"policies\":41,\"rpc_functions\":12,\"rls_enabled_tables\":30,\"database\":\"PostgreSQL 17.11\"}")],
                  ["Unauthenticated route guards", st("VERIFIED"), P("/bootstrap and /ai/suggestions without JWT both return {\"error\":\"Sign in to Momentum Cloud first.\"}")],
@@ -363,7 +375,9 @@ story += [table(["Check", "Result", "How it was proven"],
                  ["Functional DB smoke test", st("VERIFIED"), P("Temp user produced 9 planner tasks, 3 AI suggestions, 20 bootstrap keys, 9 activity events, 1 daily brief; metrics 2026-11 with targets 68 / 1013200 / 20 and zero fabricated sales or outreach; transaction rolled back")],
                  ["RLS owner vs team isolation", st("VERIFIED"), P("Owner saw 1 settings/cycle/workspace/goal; team member: is_owner false, is_member true, visible_goals 1, personal tasks/cycles/settings 0; rolled back")],
                  ["pg translation unit tests", st("VERIFIED"), P("6 tests: placeholders, string literals, table qualification, BEGIN IMMEDIATE, PRAGMA, INSERT OR IGNORE, error mapping")],
-                 ["Fail-closed endpoints", st("VERIFIED"), P("/api/pg/health returns 503 with no connection string; Netlify wrapper returns explicit 503")],
+                 ["Async Express API on PostgreSQL", st("VERIFIED"), P("10/10 acceptance tests with pg mocked by a real in-process PostgreSQL engine (PGlite) and the exact momentum_os migration: register + seeded defaults, CSRF rejection, idempotent daily plan, write/read persistence, atomic Next Chapter checklists, atomic cycle rollover, export redaction, team isolation, logout/login persistence")],
+                 ["Translated SQL on the REAL project", st("VERIFIED"), P("COUNT(*)::int, qualified momentum_os tables, INSERT ... ON CONFLICT DO NOTHING, UPDATE and SELECT shapes executed in a transaction on the live Supabase DB and rolled back; final public rows = 0")],
+                 ["Fail-closed endpoints", st("VERIFIED"), P("/api/pg/health returns 503 with no connection string; Netlify wrapper returns explicit 503 only when DATABASE_URL is missing")],
                  ["Live preview", st("VERIFIED"), P("Vite 5173 and API 3001 both HTTP 200; log 'Momentum OS API listening on 3001 (isolated preview mode)'")]],
                 [38 * mm, 24 * mm, W - 62 * mm]),
           Spacer(1, 4 * mm),
@@ -372,22 +386,22 @@ story += [table(["Check", "Result", "How it was proven"],
             "files.pythonhosted.org. Direct curl to Supabase REST fails. Database-side SQL ran "
             "through the Supabase connector (real server-side execution), and the public Edge "
             "Function URL was reached through the web fetch tool. The Node pg driver path is "
-            "type-checked and unit-tested but has NOT been executed against the live database "
-            "from this sandbox.", "Small")]
+            "executed against a real PostgreSQL engine locally and the translated SQL shapes were "
+            "executed server-side on the live Supabase database. What remains unproven is a "
+            "deployed Netlify Function opening a network connection to Supabase.", "Small")]
 
 # ------------------------------------------------------- 7. not working
 story += [P("7. Everything NOT WORKING / known issues", "H1"), divider(), Spacer(1, 3 * mm)]
 issues = [
-    ("Netlify site cannot be seen", "Arena has no Netlify connector ('unsupported'); GitHub shows 0 deployments, 0 environments, no Netlify preview checks or PR comments, no netlify.toml in any branch, no Pages, no homepage URL. Webhooks/secrets endpoints return 403 for this token. Web search found only unrelated sites (momentumos.space, momentum-os.netlify.app, lt-momentum-clone.netlify.app). The already-deployed site is therefore UNVERIFIED."),
-    ("Static Netlify cannot run this app", "The real app is Express + SQLite. Netlify static hosting cannot run the Express server and SQLite does not persist there. Any currently live site is likely the browser-only preview demo or an older static build, NOT the Supabase backend."),
-    ("Netlify env vars not configured", "DATABASE_URL, MOMENTUM_PG_ROUTES and the public VITE_* values must be set in Netlify Site configuration -> Environment variables. I cannot set them from here."),
-    ("Netlify Function returns 503", "Intentional. The wrapper refuses to serve the SQLite-backed app in a serverless function, because that would silently lose data on cold starts."),
-    ("Express routes still SQLite", "server/index.ts, server/team.ts and server/db.ts still use synchronous node:sqlite prepare/exec. Only the Cloud page and /api/pg/health use new paths. A full async conversion is required."),
-    ("Node pg path not runtime-verified", "Outbound DB access is blocked from this sandbox. server/postgres.ts is type-checked and unit-tested; npm run verify:db must be run on a machine with DB access."),
+    ("Netlify site cannot be seen", "Arena has no Netlify connector ('unsupported'); GitHub shows 0 deployments, 0 environments, no Netlify preview checks or PR comments, no homepage URL. Webhooks/secrets endpoints return 403 for this token. Web search found only unrelated sites (momentumos.space, momentum-os.netlify.app, lt-momentum-clone.netlify.app). The already-deployed site is therefore UNVERIFIED."),
+    ("Static-only Netlify cannot run this app", "The API needs a Netlify Function plus DATABASE_URL. A publish=dist static deploy alone cannot serve /api; any currently live static site is likely the browser-only preview demo or an older build, NOT the Supabase backend."),
+    ("Netlify env vars not configured", "DATABASE_URL and the public VITE_* values must be set in Netlify Site configuration -> Environment variables. I cannot set them from here."),
+    ("Function fails closed without the secret", "With DATABASE_URL missing the wrapper returns 503 rather than silently falling back to an ephemeral SQLite file. This is intentional; it is NOT a code defect."),
+    ("Live Node -> Supabase link unproven", "Outbound DB traffic is blocked from this sandbox. The pg path was verified with a real in-process PostgreSQL engine and with translated SQL executed server-side on the live DB, but no deployed function has connected over the network. Run npm run verify:db on the host."),
     ("No owner account", "auth.users = 0. Nobody has signed in to Momentum Cloud yet; the owner workspace has not been created."),
-    ("Public signup is still open", "disable_signup=false and mailer_autoconfirm=true, site_url http://localhost:3000, blank redirect allow list, no SMTP. This was intentional for frictionless owner creation but is a security risk until locked down. GoTrue minimum password is 6 while the UI enforces 12."),
+    ("Public signup is still open", "disable_signup=false and mailer_autoconfirm=true, site_url http://localhost:3000, blank redirect allow list, no SMTP. Intentional for frictionless owner creation but a security risk until locked down. GoTrue minimum password is 6 while the UI enforces 12."),
     ("No real LLM, no scheduler", "generate_ai_suggestions is deterministic rules-v1. No model provider, no cron, no scheduled daily planner; the planner runs only when called."),
-    ("Main workspace pages not rewired", "src/lib/api.ts still calls relative /api with cookies/CSRF. Only the Momentum Cloud page talks to Supabase. Do not describe the whole app as Supabase-backed."),
+    ("Workspace pages still use /api + cookies", "src/lib/api.ts calls relative /api with custom bcrypt/cookie/CSRF auth. That API is now PostgreSQL-backed, but the browser does not use Supabase Auth or the Edge Function for those pages. Do not describe the whole app as Supabase-Auth-backed."),
     ("Two data models coexist", "public uses Supabase Auth + uuid + RLS; momentum_os uses the legacy TEXT UUID ids + custom bcrypt auth. This was the non-destructive reconciliation, but it needs a decision before production."),
     ("Spec deviation needs approval", "The attached spec says do not replace custom auth with Supabase Auth. The pre-existing public schema already uses Supabase Auth; dropping it was prohibited. The deviation is documented in docs/SUPABASE-AUDIT.md."),
     ("Preview mode is not production auth", "MOMENTUM_PREVIEW=1 is an isolated, unauthenticated SQLite database in data/preview; anyone with the URL can see demo data. Disabled when NODE_ENV=production. Not suitable for real personal data."),
@@ -396,6 +410,7 @@ issues = [
     ("Other branch CI failing", "Run 41388145445 on arena/a531ed6e-personal-dashboad ('Migrate daily course partner task...') failed. It is not our branch and was left untouched."),
     ("Non-failing warnings", "Build chunk 646.79 kB (>500 kB advisory); GitHub Actions Node 20 deprecation and Ubuntu 26 label annotations; Node 22 node:sqlite ExperimentalWarning."),
     ("No production SQLite data", "data/ is absent, so the import script was never run against real rows and no backup/restore was needed or performed."),
+    ("No deployed function logs", "Cold-start pool behaviour, HTTPS Secure cookies, sameSite, CSRF round trips and trusted proxy settings have NOT been confirmed on the Netlify HTTPS domain; no build/function logs are available here."),
 ]
 story += [table(["#", "Issue", "Impact / current state"],
                 [[P(str(i)), P(name), P(detail)] for i, (name, detail) in enumerate(issues, 1)],
@@ -405,12 +420,11 @@ story += [table(["#", "Issue", "Impact / current state"],
 # ------------------------------------------------------- 8. not done
 story += [P("8. Everything NOT DONE - open checklist", "H1"), divider(), Spacer(1, 3 * mm)]
 todo = [
-    ("P0", "Convert every db.prepare/.exec call in server/index.ts, server/team.ts and server/db.ts to awaited server/postgres.ts helpers; keep response shapes, Zod validation, membership/role checks and transaction boundaries.", "Not started"),
-    ("P0", "Set MOMENTUM_PG_ROUTES=enabled and DATABASE_URL in Netlify; verify the function cold-start pool, HTTPS Secure cookies, sameSite, CSRF round trips and trusted proxy settings.", "Not started"),
+    ("P0", "Set DATABASE_URL (and the public VITE_* values) in Netlify Site configuration -> Environment variables; verify the function cold-start pool, HTTPS Secure cookies, sameSite, CSRF round trips and trusted proxy settings.", "Not started"),
     ("P0", "Provide/confirm the Netlify site URL and which branch it builds; connect Netlify to this branch or merge PR #4 so the new code actually deploys.", "Waiting on URL / decision"),
-    ("P0", "Run the spec section 9 acceptance tests against live PostgreSQL: registration, duplicate email, logout, session expiry, CSRF rejection, User A vs B isolation, owner/manager/member roles, idempotent daily plan, atomic cycle rollover, atomic Next Chapter checklists, cold-start persistence, export redaction.", "Not started"),
+    ("P0", "Run npm run verify:db and the full acceptance suite against the live Supabase project from a host with database access; confirm session expiry, duplicate-email handling and owner/manager/member roles on the deployed function.", "Not started"),
     ("P1", "Create the owner account from Momentum Cloud, then disable public signup, configure SMTP, set site_url and the redirect allow list.", "Not started"),
-    ("P1", "Decide the single data model: rewire the remaining workspace pages to the cloud adapter, or retire one of the two schemas (with explicit approval, never a silent drop).", "Not started"),
+    ("P1", "Decide the single data model: keep both schemas, rewire pages to the cloud adapter, or retire one schema (with explicit approval, never a silent drop).", "Not started"),
     ("P1", "Verify the deployed /api routes and write/read persistence on the Netlify HTTPS domain; confirm build and function logs show no missing-module or SQL errors.", "Not started"),
     ("P2", "Connect a real LLM behind rules-v1 and add a cron/scheduled planner and brief generation.", "Not started"),
     ("P2", "Run scripts/import-sqlite.ts if real production SQLite data ever appears; compare row counts per table and keep the SQLite backup until confirmation.", "Not applicable - no data"),
@@ -425,15 +439,15 @@ story += [table(["Priority", "Outstanding item", "State"],
           P("Deliberately NOT done (by instruction or by design): no new Supabase project, no "
             "DROP/TRUNCATE/DELETE/ALTER on existing tables, no owner account created by me, no "
             "secret/service-role key committed, no merge of PR #4, no claim that an external "
-            "production deployment works.", "Small")]
+            "production deployment works. The async Express-to-PostgreSQL conversion, previously "
+            "an open P0 item, is now COMPLETE and verified.", "Small")]
 
 # ------------------------------------------------------- 9. env vars
 story += [P("9. Environment variables - NAMES ONLY (no values)", "H1"), divider(), Spacer(1, 3 * mm)]
 story += [table(["Name", "Where it is set", "Exposure / state"],
                 [["DATABASE_URL", P("Netlify Site configuration -> Environment variables; local .env.local"), P("SERVER-ONLY SECRET. Never VITE_, never committed, never logged. NOT SET here.")],
                  ["PG_POOL_MAX", P("Same"), P("Server-only, optional (default 5).")],
-                 ["MOMENTUM_PG_ROUTES", P("Same"), P("Server-only; set to 'enabled' only after route conversion. NOT SET.")],
-                 ["MOMENTUM_IMPORT_ONLY", P("Set by the Netlify wrapper"), P("Server-only; stops app.listen() on import.")],
+                                  ["MOMENTUM_IMPORT_ONLY", P("Set by the Netlify wrapper"), P("Server-only; stops app.listen() on import.")],
                  ["DATA_DIR / NODE_ENV / PORT / MOMENTUM_PREVIEW", P("Local / host"), P("Server-only; preview mode is isolated SQLite.")],
                  ["VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY", P(".env.local (gitignored) / Netlify"), P("PUBLIC publishable values only. Set locally; browser receives them.")],
                  ["SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL, SUPABASE_JWKS, SUPABASE_PUBLISHABLE_KEYS, SUPABASE_SECRET_KEYS", P("Injected by Supabase into the project"), P("Names only. Seven platform secrets exist; values are never repeated in this repo.")]],
@@ -446,8 +460,10 @@ story += [table(["Artefact", "Detail"],
                  ["dbcd5da", P("Full Momentum OS app recovered from arena/a531ed6e-personal-dashboad (fast-forward)")],
                  ["414efd2", P("feat: build Momentum AI backend on Supabase - 20 files, 2541 insertions")],
                  ["d428730", P("feat: safely connect Momentum OS to the existing Supabase project - 16 files, 1437 insertions")],
+                 ["fc13437 / 9be221f", P("Complete work & status report PDF + reproducible generator; ignore Python bytecode")],
+                 [HEAD, P("feat: finish the async Express-to-PostgreSQL conversion - dual-backend db, per-request transactions, 10 PostgreSQL acceptance tests, live Netlify Function wrapper")],
                  ["PR #4", P("OPEN against main, https://github.com/Sainchigreat/Personal-Dashboad/pull/4, 13 commits, CI green, audit comment added")],
-                 ["CI runs", P("41385820560 (PR) green; 41385805019 (push) green; 41392237352 (push) green in 31s")],
+                 ["CI runs", P("41385820560, 41385805019, 41392237352 and 41393367495 all green; latest push run re-verified after the async conversion")],
                  ["Live API", P("https://ppfjotymclhbihkjvyxt.supabase.co/functions/v1/momentum-api/health returns status ok")],
                  ["Live preview", P("Process momentum-os-bf84f751 - npm run dev:preview on 0.0.0.0, Vite 5173 and API 3001, HTTP 200 (restarted after the sandbox reset)")],
                  ["Key report", P("docs/SUPABASE-AUDIT.md - the evidence-based audit and status table")]],
@@ -457,8 +473,8 @@ story += [table(["Artefact", "Detail"],
 story += [P("11. Recommended next steps (in order)", "H1"), divider(), Spacer(1, 3 * mm)]
 story += numbered([
     "Send me the Netlify site URL (and tell me which branch Netlify builds). I can then fetch the live page, inspect exactly what is deployed and confirm whether it is the static demo or an older build.",
-    "Let me finish the async Express-to-PostgreSQL route conversion; then set DATABASE_URL and MOMENTUM_PG_ROUTES=enabled in Netlify and flip the fail-closed wrapper on.",
-    "Run npm run verify:db and the full acceptance suite against the live project; confirm cookies, CSRF, isolation, planner idempotency and cold-start persistence.",
+    "Set DATABASE_URL in Netlify (server-only secret) so the now-active async API uses the momentum_os schema instead of falling back to SQLite.",
+    "Run npm run verify:db and the acceptance suite from the host, then confirm cookies, CSRF, isolation, planner idempotency and cold-start persistence on the deployed function.",
     "Create the owner account from Momentum Cloud, then disable public signup, configure SMTP and set the correct site URL / redirect allow list.",
     "Only after the above: merge PR #4 and verify the production /api health and a write/read persistence round trip on the Netlify domain.",
 ])
@@ -476,11 +492,13 @@ story += [table(["Path", "Purpose"],
                  ["src/lib/cloud.ts", P("Typed browser Supabase client and API helpers")],
                  ["src/pages/Cloud.tsx", P("Momentum Cloud page (Supabase-backed)")],
                  ["src/lib/api.ts", P("Existing local /api client - the seam for the remaining adapter switch")],
-                 ["server/postgres.ts", P("Server-only pg pool, SQL translation, transactions, round trip")],
+                 ["server/postgres.ts", P("Server-only pg pool, ALS transaction context, SQL translation, error mapping, round trip")],
+                 ["server/db.ts", P("Dual-backend async Db: SQLite locally, momentum_os/PostgreSQL with DATABASE_URL")],
+                 ["server/express-async-errors.d.ts", P("Type declaration for the Express 4 async-error patch")],
                  ["server/index.ts", P("Express app, /api/pg/health probe, exported app without auto-listen")],
-                 ["netlify.toml / netlify/functions/api.ts", P("Build, redirects, headers and fail-closed Functions wrapper")],
+                 ["netlify.toml / netlify/functions/api.ts", P("Build, redirects, headers and the active Netlify Functions wrapper")],
                  ["scripts/verify-db.ts / scripts/import-sqlite.ts", P("Connection check and repeatable FK-safe import")],
-                 ["tests/postgres.test.ts / tests/pg-health.test.ts", P("New unit and integration tests")],
+                 ["tests/postgres.test.ts / tests/pg-health.test.ts / tests/postgres-integration.test.ts", P("Translation unit tests, fail-closed health test, 10 PostgreSQL acceptance tests (PGlite)")],
                  ["README.md / .env.example", P("Project docs and env var names")],
                  ["docs/generate-status-report.py", P("Reproducible generator for THIS PDF")]],
                 [72 * mm, W - 72 * mm])]

@@ -47,10 +47,10 @@ const member = (res: Response) => res.locals.teamMember as Membership;
 export const hashInvite = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
-function requireMember(_req: Request, res: Response, next: NextFunction) {
+async function requireMember(_req: Request, res: Response, next: NextFunction) {
   const user = session(res);
-  if (user.account_type === "owner") ensureTeamOwnerWorkspace(user.user_id);
-  const membership = db
+  if (user.account_type === "owner") await ensureTeamOwnerWorkspace(user.user_id);
+  const membership = await db
     .prepare(
       "SELECT workspace_id,user_id,role,status FROM team_members WHERE user_id=?",
     )
@@ -69,15 +69,15 @@ function requireManager(_req: Request, res: Response, next: NextFunction) {
       .json({ error: "Only the owner or a manager can do that." });
   return next();
 }
-function activeMember(workspaceId: string, userId: string) {
-  return db
+async function activeMember(workspaceId: string, userId: string) {
+  return await db
     .prepare(
       "SELECT user_id,role,status FROM team_members WHERE workspace_id=? AND user_id=? AND status='active'",
     )
     .get(workspaceId, userId) as
     { user_id: string; role: Role; status: string } | undefined;
 }
-function activity(
+async function activity(
   m: Membership,
   userId: string,
   action: string,
@@ -85,23 +85,26 @@ function activity(
   entityId: string,
   summary: string,
 ) {
-  db.prepare(
+  await db.prepare(
     "INSERT INTO team_activity(id,workspace_id,actor_user_id,action,entity_type,entity_id,summary,created_at) VALUES (?,?,?,?,?,?,?,?)",
   ).run(id(), m.workspace_id, userId, action, type, entityId, summary, now());
 }
-function transaction<T>(work: () => T): T {
-  db.exec("BEGIN IMMEDIATE");
+async function transaction<T>(work: () => Promise<T>): Promise<T> {
+  await db.exec("BEGIN IMMEDIATE");
   try {
-    const result = work();
-    db.exec("COMMIT");
+    const result = await work();
+    await db.exec("COMMIT");
     return result;
   } catch (error) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw error;
   }
 }
-function accessibleTask(m: Membership, taskId: string): TeamTask | undefined {
-  return db
+async function accessibleTask(
+  m: Membership,
+  taskId: string,
+): Promise<TeamTask | undefined> {
+  return await db
     .prepare(
       "SELECT id,title,assignee_user_id,reviewer_user_id,status FROM team_tasks WHERE id=? AND workspace_id=? AND (? != 'member' OR assignee_user_id=?)",
     )
@@ -109,19 +112,19 @@ function accessibleTask(m: Membership, taskId: string): TeamTask | undefined {
 }
 router.use(requireMember);
 
-router.get("/bootstrap", (_req, res) => {
+router.get("/bootstrap", async (_req, res) => {
   const m = member(res);
   const wid = m.workspace_id;
-  const workspace = db
+  const workspace = await db
     .prepare("SELECT id,name FROM team_workspaces WHERE id=?")
     .get(wid);
-  const goals = db
+  const goals = await db
     .prepare(
       `SELECT g.*,s.name AS owner_name FROM team_goals g
     LEFT JOIN settings s ON s.user_id=g.owner_user_id WHERE g.workspace_id=? ORDER BY g.created_at DESC`,
     )
     .all(wid);
-  const tasks = db
+  const tasks = await db
     .prepare(
       `SELECT t.*,a.name AS assignee_name,r.name AS reviewer_name,g.title AS goal_title
     FROM team_tasks t JOIN settings a ON a.user_id=t.assignee_user_id
@@ -131,7 +134,7 @@ router.get("/bootstrap", (_req, res) => {
     ORDER BY CASE t.status WHEN 'submitted' THEN 0 WHEN 'revision_requested' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'assigned' THEN 3 ELSE 4 END,t.due_date,t.created_at DESC`,
     )
     .all(wid, m.role, m.user_id);
-  const members = db
+  const members = await db
     .prepare(
       `SELECT m.user_id,m.role,m.status,m.joined_at,s.name,
     CASE WHEN ?='member' AND m.user_id!=? THEN NULL ELSE u.email END AS email
@@ -139,7 +142,7 @@ router.get("/bootstrap", (_req, res) => {
     WHERE m.workspace_id=? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END,s.name`,
     )
     .all(m.role, m.user_id, wid);
-  const events = db
+  const events = await db
     .prepare(
       `SELECT a.id,a.action,a.entity_type,a.entity_id,a.summary,a.created_at,s.name
     FROM team_activity a JOIN settings s ON s.user_id=a.actor_user_id
@@ -148,7 +151,7 @@ router.get("/bootstrap", (_req, res) => {
     ORDER BY a.created_at DESC LIMIT 50`,
     )
     .all(wid, m.role, m.user_id);
-  const comments = db
+  const comments = await db
     .prepare(
       `SELECT c.*,s.name FROM team_comments c JOIN team_tasks t ON t.id=c.task_id
     JOIN settings s ON s.user_id=c.user_id
@@ -158,12 +161,12 @@ router.get("/bootstrap", (_req, res) => {
   const invites =
     m.role === "member"
       ? []
-      : db
+      : await db
           .prepare(
             "SELECT id,email,role,expires_at,created_at FROM team_invites WHERE workspace_id=? AND accepted_at IS NULL AND expires_at>? ORDER BY created_at DESC",
           )
           .all(wid, Date.now());
-  const preferences = db
+  const preferences = await db
     .prepare("SELECT theme FROM settings WHERE user_id=?")
     .get(m.user_id);
   res.json({
@@ -179,13 +182,13 @@ router.get("/bootstrap", (_req, res) => {
   });
 });
 
-router.patch("/preferences", (req, res, next) => {
+router.patch("/preferences", async (req, res, next) => {
   try {
     const input = z
       .object({ theme: z.enum(["system", "dark", "light"]) })
       .strict()
       .parse(req.body);
-    db.prepare("UPDATE settings SET theme=?,updated_at=? WHERE user_id=?").run(
+    await db.prepare("UPDATE settings SET theme=?,updated_at=? WHERE user_id=?").run(
       input.theme,
       now(),
       member(res).user_id,
@@ -196,7 +199,7 @@ router.patch("/preferences", (req, res, next) => {
   }
 });
 
-router.post("/invites", requireManager, (req, res, next) => {
+router.post("/invites", requireManager, async (req, res, next) => {
   try {
     if (process.env.MOMENTUM_PREVIEW === "1")
       return res.status(403).json({
@@ -216,12 +219,12 @@ router.post("/invites", requireManager, (req, res, next) => {
       return res
         .status(403)
         .json({ error: "Only the owner can invite a manager." });
-    if (db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email))
+    if (await db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email))
       return res.status(409).json({
         error:
           "This email already has an account. Existing-account invitations are not supported yet.",
       });
-    const existingInvite = db
+    const existingInvite = await db
       .prepare(
         "SELECT role FROM team_invites WHERE workspace_id=? AND lower(email)=? AND accepted_at IS NULL AND expires_at>?",
       )
@@ -233,11 +236,11 @@ router.post("/invites", requireManager, (req, res, next) => {
     const inviteToken = randomBytes(32).toString("base64url"),
       inviteId = id(),
       expires = Date.now() + 7 * 24 * 60 * 60 * 1000;
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         "DELETE FROM team_invites WHERE workspace_id=? AND lower(email)=? AND accepted_at IS NULL",
       ).run(m.workspace_id, email);
-      db.prepare(
+      await db.prepare(
         "INSERT INTO team_invites(id,workspace_id,email,role,token_hash,invited_by,expires_at,created_at) VALUES (?,?,?,?,?,?,?,?)",
       ).run(
         inviteId,
@@ -249,7 +252,7 @@ router.post("/invites", requireManager, (req, res, next) => {
         expires,
         now(),
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "invited",
@@ -270,10 +273,10 @@ router.post("/invites", requireManager, (req, res, next) => {
     return next(error);
   }
 });
-router.delete("/invites/:id", requireManager, (req, res, next) => {
+router.delete("/invites/:id", requireManager, async (req, res, next) => {
   try {
     const m = member(res);
-    const invite = db
+    const invite = await db
       .prepare(
         "SELECT id,role,email FROM team_invites WHERE id=? AND workspace_id=? AND accepted_at IS NULL",
       )
@@ -285,12 +288,12 @@ router.delete("/invites/:id", requireManager, (req, res, next) => {
       return res
         .status(403)
         .json({ error: "Only the owner can revoke a manager invitation." });
-    transaction(() => {
-      db.prepare("DELETE FROM team_invites WHERE id=? AND workspace_id=?").run(
+    await transaction(async () => {
+      await db.prepare("DELETE FROM team_invites WHERE id=? AND workspace_id=?").run(
         invite.id,
         m.workspace_id,
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "revoked",
@@ -304,7 +307,7 @@ router.delete("/invites/:id", requireManager, (req, res, next) => {
     return next(error);
   }
 });
-router.patch("/members/:userId", requireManager, (req, res, next) => {
+router.patch("/members/:userId", requireManager, async (req, res, next) => {
   try {
     const input = z
       .object({
@@ -315,7 +318,7 @@ router.patch("/members/:userId", requireManager, (req, res, next) => {
       .refine((v) => v.status || v.role, "Choose a change.")
       .parse(req.body);
     const m = member(res);
-    const target = db
+    const target = await db
       .prepare(
         "SELECT user_id,role,status FROM team_members WHERE workspace_id=? AND user_id=?",
       )
@@ -330,8 +333,8 @@ router.patch("/members/:userId", requireManager, (req, res, next) => {
       return res
         .status(403)
         .json({ error: "Only the owner can change manager access or roles." });
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         "UPDATE team_members SET status=?,role=? WHERE workspace_id=? AND user_id=?",
       ).run(
         input.status ?? target.status,
@@ -340,10 +343,10 @@ router.patch("/members/:userId", requireManager, (req, res, next) => {
         target.user_id,
       );
       if (input.status === "suspended")
-        db.prepare("DELETE FROM auth_sessions WHERE user_id=?").run(
+        await db.prepare("DELETE FROM auth_sessions WHERE user_id=?").run(
           target.user_id,
         );
-      activity(
+      await activity(
         m,
         m.user_id,
         "updated",
@@ -367,21 +370,21 @@ const goalFields = {
   due_date: date.default(null),
   owner_user_id: optionalId.default(null),
 };
-router.post("/goals", requireManager, (req, res, next) => {
+router.post("/goals", requireManager, async (req, res, next) => {
   try {
     const input = z.object(goalFields).strict().parse(req.body),
       m = member(res);
     if (
       input.owner_user_id &&
-      !activeMember(m.workspace_id, input.owner_user_id)
+      !await activeMember(m.workspace_id, input.owner_user_id)
     )
       return res
         .status(400)
         .json({ error: "Goal owner must be an active team member." });
     const gid = id(),
       stamp = now();
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         "INSERT INTO team_goals(id,workspace_id,title,description,target,current,unit,due_date,owner_user_id,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
       ).run(
         gid,
@@ -397,7 +400,7 @@ router.post("/goals", requireManager, (req, res, next) => {
         stamp,
         stamp,
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "created",
@@ -409,7 +412,7 @@ router.post("/goals", requireManager, (req, res, next) => {
     return res
       .status(201)
       .json(
-        db
+        await db
           .prepare("SELECT * FROM team_goals WHERE id=? AND workspace_id=?")
           .get(gid, m.workspace_id),
       );
@@ -417,7 +420,7 @@ router.post("/goals", requireManager, (req, res, next) => {
     return next(error);
   }
 });
-router.patch("/goals/:id", requireManager, (req, res, next) => {
+router.patch("/goals/:id", requireManager, async (req, res, next) => {
   try {
     // PATCH must not apply create-time defaults: doing so would silently reset
     // progress, descriptions, or dates when only one field changes.
@@ -434,14 +437,14 @@ router.patch("/goals/:id", requireManager, (req, res, next) => {
         .strict()
         .parse(req.body),
       m = member(res);
-    const goal = db
+    const goal = await db
       .prepare("SELECT id,title FROM team_goals WHERE id=? AND workspace_id=?")
       .get(req.params.id, m.workspace_id) as
       { id: string; title: string } | undefined;
     if (!goal) return res.status(404).json({ error: "Goal not found." });
     if (
       input.owner_user_id &&
-      !activeMember(m.workspace_id, input.owner_user_id)
+      !await activeMember(m.workspace_id, input.owner_user_id)
     )
       return res
         .status(400)
@@ -449,8 +452,8 @@ router.patch("/goals/:id", requireManager, (req, res, next) => {
     const keys = Object.keys(input) as Array<keyof typeof input>;
     if (!keys.length)
       return res.status(400).json({ error: "Choose a change." });
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         `UPDATE team_goals SET ${keys.map((key) => `${key}=?`).join(",")},updated_at=? WHERE id=? AND workspace_id=?`,
       ).run(
         ...keys.map((key) => input[key] as string | number | null),
@@ -458,7 +461,7 @@ router.patch("/goals/:id", requireManager, (req, res, next) => {
         goal.id,
         m.workspace_id,
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "updated",
@@ -468,7 +471,7 @@ router.patch("/goals/:id", requireManager, (req, res, next) => {
       );
     });
     return res.json(
-      db
+      await db
         .prepare("SELECT * FROM team_goals WHERE id=? AND workspace_id=?")
         .get(goal.id, m.workspace_id),
     );
@@ -477,7 +480,7 @@ router.patch("/goals/:id", requireManager, (req, res, next) => {
   }
 });
 
-router.post("/tasks", requireManager, (req, res, next) => {
+router.post("/tasks", requireManager, async (req, res, next) => {
   try {
     const input = z
       .object({
@@ -494,11 +497,11 @@ router.post("/tasks", requireManager, (req, res, next) => {
       .parse(req.body);
     const m = member(res),
       reviewer = input.reviewer_user_id ?? m.user_id;
-    if (!activeMember(m.workspace_id, input.assignee_user_id))
+    if (!await activeMember(m.workspace_id, input.assignee_user_id))
       return res
         .status(400)
         .json({ error: "Assignee must be an active team member." });
-    const reviewMember = activeMember(m.workspace_id, reviewer);
+    const reviewMember = await activeMember(m.workspace_id, reviewer);
     if (!reviewMember || reviewMember.role === "member")
       return res
         .status(400)
@@ -509,7 +512,7 @@ router.post("/tasks", requireManager, (req, res, next) => {
         .json({ error: "Choose a reviewer other than the assignee." });
     if (
       input.goal_id &&
-      !db
+      !await db
         .prepare("SELECT id FROM team_goals WHERE id=? AND workspace_id=?")
         .get(input.goal_id, m.workspace_id)
     )
@@ -518,8 +521,8 @@ router.post("/tasks", requireManager, (req, res, next) => {
         .json({ error: "Selected team goal is unavailable." });
     const tid = id(),
       stamp = now();
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         "INSERT INTO team_tasks(id,workspace_id,title,description,assignee_user_id,goal_id,priority,due_date,deliverable,reviewer_user_id,created_by,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
       ).run(
         tid,
@@ -536,7 +539,7 @@ router.post("/tasks", requireManager, (req, res, next) => {
         stamp,
         stamp,
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "assigned",
@@ -548,7 +551,7 @@ router.post("/tasks", requireManager, (req, res, next) => {
     return res
       .status(201)
       .json(
-        db
+        await db
           .prepare("SELECT * FROM team_tasks WHERE id=? AND workspace_id=?")
           .get(tid, m.workspace_id),
       );
@@ -556,7 +559,7 @@ router.post("/tasks", requireManager, (req, res, next) => {
     return next(error);
   }
 });
-router.patch("/tasks/:id", requireManager, (req, res, next) => {
+router.patch("/tasks/:id", requireManager, async (req, res, next) => {
   try {
     const input = z
       .object({
@@ -572,7 +575,7 @@ router.patch("/tasks/:id", requireManager, (req, res, next) => {
       .strict()
       .parse(req.body);
     const m = member(res),
-      task = accessibleTask(m, req.params.id);
+      task = await accessibleTask(m, req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found." });
     const keys = Object.keys(input) as Array<keyof typeof input>;
     if (!keys.length)
@@ -605,11 +608,11 @@ router.patch("/tasks/:id", requireManager, (req, res, next) => {
         .json({ error: "Reassign work before it is started." });
     const assignee = input.assignee_user_id ?? task.assignee_user_id;
     const reviewer = input.reviewer_user_id ?? task.reviewer_user_id;
-    if (!activeMember(m.workspace_id, assignee))
+    if (!await activeMember(m.workspace_id, assignee))
       return res
         .status(400)
         .json({ error: "Assignee must be an active team member." });
-    const reviewMember = reviewer && activeMember(m.workspace_id, reviewer);
+    const reviewMember = reviewer && await activeMember(m.workspace_id, reviewer);
     if (!reviewMember || reviewMember.role === "member")
       return res
         .status(400)
@@ -620,15 +623,15 @@ router.patch("/tasks/:id", requireManager, (req, res, next) => {
         .json({ error: "Choose a reviewer other than the assignee." });
     if (
       input.goal_id &&
-      !db
+      !await db
         .prepare("SELECT id FROM team_goals WHERE id=? AND workspace_id=?")
         .get(input.goal_id, m.workspace_id)
     )
       return res
         .status(400)
         .json({ error: "Selected team goal is unavailable." });
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         `UPDATE team_tasks SET ${keys.map((key) => `${key}=?`).join(",")},updated_at=? WHERE id=? AND workspace_id=?`,
       ).run(
         ...keys.map((key) => input[key] as string | null),
@@ -636,7 +639,7 @@ router.patch("/tasks/:id", requireManager, (req, res, next) => {
         task.id,
         m.workspace_id,
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "updated",
@@ -646,7 +649,7 @@ router.patch("/tasks/:id", requireManager, (req, res, next) => {
       );
     });
     return res.json(
-      db
+      await db
         .prepare("SELECT * FROM team_tasks WHERE id=? AND workspace_id=?")
         .get(task.id, m.workspace_id),
     );
@@ -654,7 +657,7 @@ router.patch("/tasks/:id", requireManager, (req, res, next) => {
     return next(error);
   }
 });
-router.patch("/tasks/:id/status", (req, res, next) => {
+router.patch("/tasks/:id/status", async (req, res, next) => {
   try {
     const input = z
       .object({
@@ -671,7 +674,7 @@ router.patch("/tasks/:id/status", (req, res, next) => {
       .strict()
       .parse(req.body);
     const m = member(res),
-      task = accessibleTask(m, req.params.id);
+      task = await accessibleTask(m, req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found." });
     const workAction = ["in_progress", "submitted"].includes(input.status);
     if (workAction && task.assignee_user_id !== m.user_id)
@@ -707,8 +710,8 @@ router.patch("/tasks/:id/status", (req, res, next) => {
         .status(400)
         .json({ error: "Add feedback so the assignee knows what to revise." });
     const stamp = now();
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         `UPDATE team_tasks SET status=?,
         submission=CASE WHEN ?='submitted' THEN ? ELSE submission END,
         feedback=CASE WHEN ? IN ('approved','revision_requested') THEN ? ELSE feedback END,
@@ -729,7 +732,7 @@ router.patch("/tasks/:id/status", (req, res, next) => {
         task.id,
         m.workspace_id,
       );
-      activity(
+      await activity(
         m,
         m.user_id,
         "changed_status",
@@ -739,7 +742,7 @@ router.patch("/tasks/:id/status", (req, res, next) => {
       );
     });
     return res.json(
-      db
+      await db
         .prepare("SELECT * FROM team_tasks WHERE id=? AND workspace_id=?")
         .get(task.id, m.workspace_id),
     );
@@ -747,22 +750,22 @@ router.patch("/tasks/:id/status", (req, res, next) => {
     return next(error);
   }
 });
-router.post("/tasks/:id/comments", (req, res, next) => {
+router.post("/tasks/:id/comments", async (req, res, next) => {
   try {
     const input = z
         .object({ body: notes.min(1) })
         .strict()
         .parse(req.body),
       m = member(res),
-      task = accessibleTask(m, req.params.id);
+      task = await accessibleTask(m, req.params.id);
     if (!task) return res.status(404).json({ error: "Task not found." });
     const cid = id(),
       stamp = now();
-    transaction(() => {
-      db.prepare(
+    await transaction(async () => {
+      await db.prepare(
         "INSERT INTO team_comments(id,task_id,user_id,body,created_at) VALUES (?,?,?,?,?)",
       ).run(cid, task.id, m.user_id, input.body, stamp);
-      activity(
+      await activity(
         m,
         m.user_id,
         "commented",

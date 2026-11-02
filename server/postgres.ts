@@ -12,8 +12,14 @@
 // `public` schema (Supabase Auth + RLS) is never touched.
 
 import { Pool, type PoolClient } from "pg";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 export const PG_SCHEMA = "momentum_os";
+
+/** Per-request transaction state. BEGIN stores a dedicated client here so that
+ * every awaited query in the same request runs on that one connection. */
+export type DbTxState = { client: PoolClient | null };
+export const dbContext = new AsyncLocalStorage<DbTxState>();
 
 /** Tables from server/schema.sql, used only to qualify identifiers. */
 export const TABLES = [
@@ -82,6 +88,9 @@ export function toPostgres(sql: string): string {
   let result = trimmed
     .replace(/^BEGIN\s+IMMEDIATE\b/i, "BEGIN")
     .replace(/^BEGIN\s+EXCLUSIVE\b/i, "BEGIN")
+    // PostgreSQL returns COUNT(*) as bigint (a JS string via pg); keep the
+    // existing TypeScript `count: number` contract intact.
+    .replace(/\bCOUNT\(\*\)\s+AS\s+(\w+)/gi, "COUNT(*)::int AS $1")
     .replace(/\bINSERT\s+OR\s+IGNORE\s+INTO\b/gi, "INSERT INTO");
   const orIgnore = /INSERT\s+OR\s+IGNORE\s+INTO/i.test(trimmed);
   result = translatePlaceholders(result);
@@ -127,7 +136,12 @@ export function getPool(): Pool {
   return pool;
 }
 
-type Executor = Pick<Pool, "query"> | Pick<PoolClient, "query">;
+export type Executor = Pick<Pool, "query"> | Pick<PoolClient, "query">;
+
+/** Query on the request's transactional client, or on the shared pool. */
+export function currentRunner(): Executor {
+  return dbContext.getStore()?.client ?? getPool();
+}
 
 async function execute<T extends Record<string, unknown> = Record<string, unknown>>(
   runner: Executor,
@@ -145,17 +159,17 @@ async function execute<T extends Record<string, unknown> = Record<string, unknow
 }
 
 export async function pgGet<T extends Record<string, unknown> = Record<string, unknown>>(
-  sql: string, params: unknown[] = [], runner: Executor = getPool(),
+  sql: string, params: unknown[] = [], runner: Executor = currentRunner(),
 ): Promise<T | undefined> {
   return (await execute<T>(runner, sql, params)).rows[0];
 }
 export async function pgAll<T extends Record<string, unknown> = Record<string, unknown>>(
-  sql: string, params: unknown[] = [], runner: Executor = getPool(),
+  sql: string, params: unknown[] = [], runner: Executor = currentRunner(),
 ): Promise<T[]> {
   return (await execute<T>(runner, sql, params)).rows;
 }
 export async function pgRun(
-  sql: string, params: unknown[] = [], runner: Executor = getPool(),
+  sql: string, params: unknown[] = [], runner: Executor = currentRunner(),
 ): Promise<{ changes: number }> {
   const result = await execute(runner, sql, params);
   return { changes: result.changes };

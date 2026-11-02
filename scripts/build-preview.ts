@@ -16,26 +16,30 @@ const { db, id, createWorkspace, ensureDailyPlan } =
   await import("../server/db.ts");
 const { configs, foreignKeys } = await import("../server/validation.ts");
 const demoUser = id();
-createWorkspace(
+await createWorkspace(
   demoUser,
   "preview@momentum.local",
   "not-a-real-password",
   "Chisom Ogbonna",
 );
-ensureDailyPlan(demoUser);
+await ensureDailyPlan(demoUser);
 const resources = Object.keys(configs) as Array<keyof typeof configs>;
 const seed: Record<string, unknown> = {
-  settings: db.prepare("SELECT * FROM settings WHERE user_id=?").get(demoUser),
+  settings: await db
+    .prepare("SELECT * FROM settings WHERE user_id=?")
+    .get(demoUser),
 };
 const defaults: Record<string, Record<string, unknown>> = {};
 const required: Record<string, string[]> = {};
 for (const resource of resources) {
-  seed[resource] = db
+  seed[resource] = await db
     .prepare(`SELECT * FROM ${resource} WHERE user_id=?`)
     .all(demoUser);
   required[resource] = configs[resource].required;
   defaults[resource] = {};
-  const columns = db.prepare(`PRAGMA table_info(${resource})`).all() as Array<{
+  const columns = (await db
+    .prepare(`PRAGMA table_info(${resource})`)
+    .all()) as Array<{
     name: string;
     dflt_value: string | null;
   }>;
@@ -49,7 +53,7 @@ for (const resource of resources) {
     else defaults[resource][name] = null;
   }
 }
-db.close();
+await db.close();
 rmSync(temporaryDatabase, { recursive: true, force: true });
 const safeJSON = (value: unknown) =>
   JSON.stringify(value).replaceAll("<", "\\u003c");

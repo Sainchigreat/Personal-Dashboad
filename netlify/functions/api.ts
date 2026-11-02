@@ -1,13 +1,12 @@
-// Netlify Functions entry point for the existing Express API.
+// Netlify Functions entry point for the async PostgreSQL-backed Express API.
 //
-// FAIL-CLOSED BY DESIGN. The spec forbids deploying before the schema, function
-// and environment variables are ready, and forbids silent data loss. Until the
-// route layer is converted to PostgreSQL, this handler returns an explicit 503
-// instead of serving the app against an ephemeral SQLite file.
+// The route layer (server/index.ts, server/team.ts, server/db.ts) is now fully
+// async and uses server/postgres.ts whenever DATABASE_URL is present. Importing
+// the Express app must not call app.listen(), hence MOMENTUM_IMPORT_ONLY.
 //
-// Do not enable MOMENTUM_PG_ROUTES until server/index.ts + server/team.ts use
-// the pg helpers in server/postgres.ts. Importing the Express app must not call
-// app.listen(), hence MOMENTUM_IMPORT_ONLY.
+// Fail-closed on the one thing that would silently lose data: if DATABASE_URL
+// is missing the app would fall back to an ephemeral SQLite file, so we refuse
+// to serve instead.
 import serverless from "serverless-http";
 
 type Event = {
@@ -43,14 +42,7 @@ export const handler = async (event: Event, context: Context): Promise<Result> =
     return json(503, {
       error: "DATABASE_URL is not configured.",
       where: "Netlify -> Site configuration -> Environment variables",
-      note: "Server-only secret. Never prefix it with VITE_.",
-    });
-  }
-  if (process.env.MOMENTUM_PG_ROUTES !== "enabled") {
-    return json(503, {
-      error: "The PostgreSQL route layer is not active yet.",
-      note: "The Express handlers still use SQLite. Refusing to serve them in a serverless function to avoid ephemeral data loss.",
-      required: "Convert server/index.ts and server/team.ts to server/postgres.ts helpers, then set MOMENTUM_PG_ROUTES=enabled.",
+      note: "Server-only secret. Never prefix it with VITE_. Without it the API would fall back to an ephemeral SQLite file, so it refuses to start.",
     });
   }
   if (!wrapped) {

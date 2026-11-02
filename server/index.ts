@@ -4,6 +4,7 @@ import express, {
   type Request,
   type Response,
 } from "express";
+import "express-async-errors";
 import helmet from "helmet";
 import bcrypt from "bcryptjs";
 import { createHash, randomBytes } from "node:crypto";
@@ -18,6 +19,8 @@ import {
   ensureDailyPlan,
   ensureTeamOwnerWorkspace,
   dateInZone,
+  withDbContext,
+  isPostgresBackend,
 } from "./db";
 import teamRouter, { hashInvite } from "./team";
 import { checkPostgresConnection, isPostgresConfigured } from "./postgres";
@@ -55,7 +58,8 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "1mb" }));
-app.use("/api", (_req, res, next) => {
+app.use(withDbContext);
+app.use("/api", async (_req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
@@ -70,7 +74,7 @@ type UserSession = {
   email: string;
   account_type: "owner" | "team";
 };
-function getSession(req: Request): UserSession | undefined {
+async function getSession(req: Request): Promise<UserSession | undefined> {
   const cookie = (req.headers.cookie || "")
     .split(";")
     .map((part) => part.trim())
@@ -84,7 +88,7 @@ function getSession(req: Request): UserSession | undefined {
     bearer || (cookie ? cookie.slice(sessionCookie.length + 1) : "");
   if (!token) return undefined;
   if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) return undefined;
-  return db
+  return await db
     .prepare(
       `SELECT s.user_id,s.csrf_token,u.email,u.account_type
        FROM auth_sessions s JOIN users u ON u.id=s.user_id
@@ -95,12 +99,12 @@ function getSession(req: Request): UserSession | undefined {
     )
     .get(hash(token), Date.now()) as UserSession | undefined;
 }
-function setSession(res: Response, userId: string) {
+async function setSession(res: Response, userId: string) {
   const token = randomToken();
   const csrf = randomToken();
   const expires = Date.now() + 1000 * 60 * 60 * 24 * 30;
-  db.prepare("DELETE FROM auth_sessions WHERE expires_at<=?").run(Date.now());
-  db.prepare(
+  await db.prepare("DELETE FROM auth_sessions WHERE expires_at<=?").run(Date.now());
+  await db.prepare(
     "INSERT INTO auth_sessions(token_hash,user_id,csrf_token,expires_at) VALUES (?,?,?,?)",
   ).run(hash(token), userId, csrf, expires);
   res.cookie(sessionCookie, token, {
@@ -112,7 +116,7 @@ function setSession(res: Response, userId: string) {
   });
   return { csrfToken: csrf, token };
 }
-function clearSession(req: Request, res: Response) {
+async function clearSession(req: Request, res: Response) {
   const cookie = (req.headers.cookie || "")
     .split(";")
     .map((part) => part.trim())
@@ -124,7 +128,7 @@ function clearSession(req: Request, res: Response) {
   const token =
     bearer || (cookie ? cookie.slice(sessionCookie.length + 1) : "");
   if (token)
-    db.prepare("DELETE FROM auth_sessions WHERE token_hash=?").run(hash(token));
+    await db.prepare("DELETE FROM auth_sessions WHERE token_hash=?").run(hash(token));
   res.clearCookie(sessionCookie, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -155,8 +159,8 @@ function authThrottle(req: Request, res: Response, next: NextFunction) {
   });
   return next();
 }
-function requireUser(req: Request, res: Response, next: NextFunction) {
-  const session = getSession(req);
+async function requireUser(req: Request, res: Response, next: NextFunction) {
+  const session = await getSession(req);
   if (!session)
     return res.status(401).json({ error: "Please sign in to continue." });
   if (
@@ -171,11 +175,12 @@ function requireUser(req: Request, res: Response, next: NextFunction) {
 }
 if (
   preview &&
-  !db
+  !isPostgresBackend &&
+  !(await db
     .prepare("SELECT id FROM users WHERE email=?")
-    .get("preview@momentum.local")
+    .get("preview@momentum.local"))
 ) {
-  createWorkspace(
+  await createWorkspace(
     id(),
     "preview@momentum.local",
     bcrypt.hashSync(randomToken(), 10),
@@ -201,9 +206,9 @@ app.get("/api/pg/health", async (_req, res, next) => {
   }
 });
 
-app.get("/api/auth/status", (req, res) => {
-  const session = getSession(req);
-  const count = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
+app.get("/api/auth/status", async (req, res) => {
+  const session = await getSession(req);
+  const count = await db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
     count: number;
   };
   res.json({
@@ -215,7 +220,7 @@ app.get("/api/auth/status", (req, res) => {
     accountType: session?.account_type || null,
     theme: session
       ? (
-          db
+          await db
             .prepare("SELECT theme FROM settings WHERE user_id=?")
             .get(session.user_id) as { theme: string } | undefined
         )?.theme || "light"
@@ -236,7 +241,7 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
       })
       .strict()
       .parse(req.body);
-    const count = db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
+    const count = await db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
       count: number;
     };
     const email = input.email.toLowerCase();
@@ -247,7 +252,7 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
         });
       const passwordHash = await bcrypt.hash(input.password, 12);
       // Recheck after the asynchronous hash; only one initial owner is allowed.
-      const afterHash = db
+      const afterHash = await db
         .prepare("SELECT COUNT(*) AS count FROM users")
         .get() as { count: number };
       if (afterHash.count > 0)
@@ -255,16 +260,16 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
           .status(403)
           .json({ error: "This private workspace has already been set up." });
       const userId = id();
-      createWorkspace(userId, email, passwordHash, input.name);
-      return res.json({ csrfToken: setSession(res, userId).csrfToken });
+      await createWorkspace(userId, email, passwordHash, input.name);
+      return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
     }
     if (!input.inviteToken)
       return res.status(403).json({
         error:
           "This private workspace has already been set up. A team invitation is required.",
       });
-    const lookup = () =>
-      db
+    const lookup = async () =>
+      await db
         .prepare(
           "SELECT id,workspace_id,role,email FROM team_invites WHERE token_hash=? AND expires_at>? AND accepted_at IS NULL",
         )
@@ -276,7 +281,7 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
             email: string;
           }
         | undefined;
-    const beforeHash = lookup();
+    const beforeHash = await lookup();
     if (!beforeHash || beforeHash.email.toLowerCase() !== email)
       return res.status(403).json({
         error:
@@ -285,38 +290,38 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(input.password, 12);
     const userId = id(),
       stamp = now();
-    db.exec("BEGIN IMMEDIATE");
+    await db.exec("BEGIN IMMEDIATE");
     try {
       // Invitation consumption and account creation are atomic and rechecked
       // after the asynchronous password hash.
-      const invite = lookup();
+      const invite = await lookup();
       if (!invite || invite.email.toLowerCase() !== email) {
-        db.exec("ROLLBACK");
+        await db.exec("ROLLBACK");
         return res.status(403).json({
           error: "This invitation is invalid, expired, or already used.",
         });
       }
-      if (db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email)) {
-        db.exec("ROLLBACK");
+      if (await db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email)) {
+        await db.exec("ROLLBACK");
         return res.status(409).json({
           error: "This email already has an account. Please sign in.",
         });
       }
-      db.prepare(
+      await db.prepare(
         "INSERT INTO users(id,email,password_hash,account_type,created_at) VALUES (?,?,?,'team',?)",
       ).run(userId, email, passwordHash, stamp);
       // Team accounts have only a profile and team access; do not seed the
       // owner's private cycles, plans, revenue or clients into their portal.
-      db.prepare(
+      await db.prepare(
         "INSERT INTO settings(id,user_id,name,theme,auto_plan,daily_templates,created_at,updated_at) VALUES (?,?,?,'light',0,'[]',?,?)",
       ).run(id(), userId, input.name, stamp, stamp);
-      db.prepare(
+      await db.prepare(
         "INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,?,'active',?)",
       ).run(id(), invite.workspace_id, userId, invite.role, stamp);
-      db.prepare(
+      await db.prepare(
         "UPDATE team_invites SET accepted_at=? WHERE id=? AND accepted_at IS NULL",
       ).run(stamp, invite.id);
-      db.prepare(
+      await db.prepare(
         "INSERT INTO team_activity(id,workspace_id,actor_user_id,action,entity_type,entity_id,summary,created_at) VALUES (?,?,?,'joined','member',?,?,?)",
       ).run(
         id(),
@@ -326,12 +331,12 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
         `${input.name} joined the team`,
         stamp,
       );
-      db.exec("COMMIT");
+      await db.exec("COMMIT");
     } catch (error) {
-      db.exec("ROLLBACK");
+      await db.exec("ROLLBACK");
       throw error;
     }
-    return res.json({ csrfToken: setSession(res, userId).csrfToken });
+    return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
   } catch (error) {
     return next(error);
   }
@@ -345,7 +350,7 @@ app.post("/api/auth/login", authThrottle, async (req, res, next) => {
       })
       .strict()
       .parse(req.body);
-    const user = db
+    const user = await db
       .prepare("SELECT id,password_hash,account_type FROM users WHERE email=?")
       .get(input.email.toLowerCase()) as
       | { id: string; password_hash: string; account_type: "owner" | "team" }
@@ -359,7 +364,7 @@ app.post("/api/auth/login", authThrottle, async (req, res, next) => {
     const active =
       user?.account_type !== "team" ||
       Boolean(
-        db
+        await db
           .prepare(
             "SELECT 1 FROM team_members WHERE user_id=? AND status='active'",
           )
@@ -369,31 +374,31 @@ app.post("/api/auth/login", authThrottle, async (req, res, next) => {
       return res.status(401).json({
         error: "Email or password is incorrect, or access is unavailable.",
       });
-    res.json({ csrfToken: setSession(res, user.id).csrfToken });
+    res.json({ csrfToken: (await setSession(res, user.id)).csrfToken });
   } catch (error) {
     next(error);
   }
 });
-app.post("/api/auth/preview", authThrottle, (_req, res) => {
+app.post("/api/auth/preview", authThrottle, async (_req, res) => {
   if (!preview) return res.status(404).json({ error: "Not found." });
-  const user = db
+  const user = await db
     .prepare("SELECT id FROM users WHERE email=?")
     .get("preview@momentum.local") as { id: string };
-  const session = setSession(res, user.id);
+  const session = await setSession(res, user.id);
   return res.json({
     csrfToken: session.csrfToken,
     previewToken: session.token,
   });
 });
-app.post("/api/auth/logout", requireUser, (req, res) => {
-  clearSession(req, res);
+app.post("/api/auth/logout", requireUser, async (req, res) => {
+  await clearSession(req, res);
   res.json({ ok: true });
 });
 
 // Team routes share authentication and CSRF protection, but never expose
 // owner-only personal resources to team accounts.
 app.use("/api/team", requireUser, teamRouter);
-app.use("/api", requireUser, (_req, res, next) => {
+app.use("/api", requireUser, async (_req, res, next) => {
   if ((res.locals.session as UserSession).account_type !== "owner")
     return res
       .status(403)
@@ -402,58 +407,58 @@ app.use("/api", requireUser, (_req, res, next) => {
 });
 
 const resources = Object.keys(configs) as Resource[];
-function tableRows(resource: Resource, userId: string) {
-  return db
+async function tableRows(resource: Resource, userId: string) {
+  return await db
     .prepare(
       `SELECT * FROM ${resource} WHERE user_id=? ORDER BY created_at DESC`,
     )
     .all(userId);
 }
-function getBootstrap(userId: string) {
-  const settings = db
+async function getBootstrap(userId: string) {
+  const settings = await db
     .prepare("SELECT * FROM settings WHERE user_id=?")
     .get(userId);
   const result: Record<string, unknown> = { settings };
   for (const resource of resources)
-    result[resource] = tableRows(resource, userId);
+    result[resource] = await tableRows(resource, userId);
   return result;
 }
-app.get("/api/bootstrap", requireUser, (_req, res) => {
+app.get("/api/bootstrap", requireUser, async (_req, res) => {
   const userId = (res.locals.session as UserSession).user_id;
-  ensureDailyPlan(userId);
-  res.json(getBootstrap(userId));
+  await ensureDailyPlan(userId);
+  res.json(await getBootstrap(userId));
 });
-app.get("/api/export", requireUser, (_req, res) => {
+app.get("/api/export", requireUser, async (_req, res) => {
   const userId = (res.locals.session as UserSession).user_id;
-  const workspaceId = ensureTeamOwnerWorkspace(userId);
+  const workspaceId = await ensureTeamOwnerWorkspace(userId);
   // The JSON export contains shared work but never password hashes, session
   // secrets, or invitation token hashes. Full recovery still requires a DB backup.
   const team = {
-    workspace: db
+    workspace: await db
       .prepare(
         "SELECT id,name,created_at,updated_at FROM team_workspaces WHERE id=?",
       )
       .get(workspaceId),
-    members: db
+    members: await db
       .prepare(
         "SELECT m.user_id,m.role,m.status,m.joined_at,u.email,s.name FROM team_members m JOIN users u ON u.id=m.user_id JOIN settings s ON s.user_id=m.user_id WHERE m.workspace_id=?",
       )
       .all(workspaceId),
-    goals: db
+    goals: await db
       .prepare("SELECT * FROM team_goals WHERE workspace_id=?")
       .all(workspaceId),
-    tasks: db
+    tasks: await db
       .prepare("SELECT * FROM team_tasks WHERE workspace_id=?")
       .all(workspaceId),
-    comments: db
+    comments: await db
       .prepare(
         "SELECT c.* FROM team_comments c JOIN team_tasks t ON t.id=c.task_id WHERE t.workspace_id=?",
       )
       .all(workspaceId),
-    activity: db
+    activity: await db
       .prepare("SELECT * FROM team_activity WHERE workspace_id=?")
       .all(workspaceId),
-    invitations: db
+    invitations: await db
       .prepare(
         "SELECT id,email,role,expires_at,accepted_at,created_at FROM team_invites WHERE workspace_id=?",
       )
@@ -463,18 +468,18 @@ app.get("/api/export", requireUser, (_req, res) => {
     format: "momentum-os-export",
     version: 1,
     exported_at: now(),
-    data: getBootstrap(userId),
+    data: await getBootstrap(userId),
     team,
   });
 });
-app.patch("/api/settings", requireUser, (req, res, next) => {
+app.patch("/api/settings", requireUser, async (req, res, next) => {
   try {
     const userId = (res.locals.session as UserSession).user_id;
     const data = settingsSchema.parse(req.body) as Record<
       string,
       string | number
     >;
-    const existing = db
+    const existing = await db
       .prepare("SELECT * FROM settings WHERE user_id=?")
       .get(userId) as Record<string, string | number>;
     if (
@@ -486,11 +491,11 @@ app.patch("/api/settings", requireUser, (req, res, next) => {
         .json({ error: "Workday end must be after its start." });
     const keys = Object.keys(data);
     if (keys.length)
-      db.prepare(
+      await db.prepare(
         `UPDATE settings SET ${keys.map((key) => `${key}=?`).join(",")},updated_at=? WHERE user_id=?`,
       ).run(...keys.map((key) => data[key]), now(), userId);
     return res.json(
-      db.prepare("SELECT * FROM settings WHERE user_id=?").get(userId),
+      await db.prepare("SELECT * FROM settings WHERE user_id=?").get(userId),
     );
   } catch (error) {
     return next(error);
@@ -514,17 +519,17 @@ const rolloverSchema = z
     carry_tasks: z.boolean(),
   })
   .strict();
-app.post("/api/cycles/rollover", requireUser, (req, res, next) => {
+app.post("/api/cycles/rollover", requireUser, async (req, res, next) => {
   try {
     const data = rolloverSchema.parse(req.body);
     const userId = (res.locals.session as UserSession).user_id;
-    const source = db
+    const source = await db
       .prepare("SELECT id FROM cycles WHERE id=? AND user_id=?")
       .get(data.source_cycle_id, userId);
     if (!source)
       return res.status(404).json({ error: "Source cycle not found." });
     if (
-      db
+      await db
         .prepare("SELECT id FROM cycles WHERE user_id=? AND month=?")
         .get(userId, data.month)
     )
@@ -534,12 +539,12 @@ app.post("/api/cycles/rollover", requireUser, (req, res, next) => {
       });
     const newId = id();
     const stamp = now();
-    db.exec("BEGIN IMMEDIATE");
+    await db.exec("BEGIN IMMEDIATE");
     try {
-      db.prepare(
+      await db.prepare(
         "UPDATE cycles SET status='archived',updated_at=? WHERE user_id=? AND status='active'",
       ).run(stamp, userId);
-      db.prepare(
+      await db.prepare(
         `INSERT INTO cycles(id,user_id,month,theme,objective,objectives,sales_target,revenue_target,outreach_target,projects_target,chapter_content_target,course_days,session_day,status,created_at,updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)`,
       ).run(
@@ -560,7 +565,7 @@ app.post("/api/cycles/rollover", requireUser, (req, res, next) => {
         stamp,
       );
       if (data.carry_tasks) {
-        const tasks = db
+        const tasks = await db
           .prepare(
             "SELECT * FROM tasks WHERE user_id=? AND cycle_id=? AND status IN ('todo','in_progress','deferred')",
           )
@@ -576,7 +581,7 @@ app.post("/api/cycles/rollover", requireUser, (req, res, next) => {
             task.due_date && String(task.due_date) >= first
               ? String(task.due_date)
               : first;
-          insert.run(
+          await insert.run(
             id(),
             userId,
             newId,
@@ -596,20 +601,20 @@ app.post("/api/cycles/rollover", requireUser, (req, res, next) => {
             stamp,
             stamp,
           );
-          db.prepare(
+          await db.prepare(
             "UPDATE tasks SET status='carried',updated_at=? WHERE id=? AND user_id=?",
           ).run(stamp, task.id, userId);
         }
       }
-      db.exec("COMMIT");
+      await db.exec("COMMIT");
     } catch (error) {
-      db.exec("ROLLBACK");
+      await db.exec("ROLLBACK");
       throw error;
     }
     return res
       .status(201)
       .json(
-        db
+        await db
           .prepare("SELECT * FROM cycles WHERE id=? AND user_id=?")
           .get(newId, userId),
       );
@@ -621,10 +626,10 @@ app.post("/api/cycles/rollover", requireUser, (req, res, next) => {
 function resourceFor(value: string): Resource | undefined {
   return resources.find((resource) => resource === value);
 }
-function validateReferences(data: Record<string, unknown>, userId: string) {
+async function validateReferences(data: Record<string, unknown>, userId: string) {
   for (const [key, table] of Object.entries(foreignKeys)) {
     if (typeof data[key] === "string" && data[key]) {
-      const row = db
+      const row = await db
         .prepare(`SELECT id FROM ${table} WHERE id=? AND user_id=?`)
         .get(data[key] as string, userId);
       if (!row) throw new Error(`INVALID_REFERENCE:${key}`);
@@ -643,7 +648,7 @@ function normalize(data: Record<string, unknown>) {
   }
   return data;
 }
-function validateBusinessRules(
+async function validateBusinessRules(
   resource: Resource,
   data: Record<string, unknown>,
   existing: Record<string, unknown> | undefined,
@@ -673,7 +678,7 @@ function validateBusinessRules(
       "VALIDATION:A confirmed paid sale must have an amount greater than zero.",
     );
   if (resource === "sales" && combined.cycle_id && combined.sale_date) {
-    const selected = db
+    const selected = await db
       .prepare("SELECT month FROM cycles WHERE id=? AND user_id=?")
       .get(String(combined.cycle_id), userId) as { month: string } | undefined;
     if (selected && !String(combined.sale_date).startsWith(selected.month))
@@ -691,7 +696,7 @@ function validateBusinessRules(
       "VALIDATION:Human review and approval are required before marking this content published.",
     );
   }
-  const profile = db
+  const profile = await db
     .prepare("SELECT timezone FROM settings WHERE user_id=?")
     .get(userId) as { timezone: string };
   if (resource === "tasks" && "status" in data) {
@@ -713,7 +718,7 @@ function validateBusinessRules(
   )
     data.published_date = dateInZone(profile.timezone);
 }
-function makeSessionPlan(
+async function makeSessionPlan(
   userId: string,
   sessionId: string,
   data: Record<string, unknown>,
@@ -733,18 +738,18 @@ function makeSessionPlan(
   const insert = db.prepare(
     "INSERT INTO session_checklists(id,user_id,session_id,title,done,sort_order,created_at,updated_at) VALUES (?,?,?,?,0,?,?,?)",
   );
-  checklist.forEach((title, index) =>
-    insert.run(id(), userId, sessionId, title, index, stamp, stamp),
-  );
+  for (const [index, title] of checklist.entries())
+    await insert.run(id(), userId, sessionId, title, index, stamp, stamp);
   const insertTask = db.prepare(
     `INSERT INTO tasks(id,user_id,cycle_id,session_id,title,category,priority,status,due_date,estimated_minutes,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,'Next Chapter','medium','todo',?,0,?,?,?)`,
   );
-  [
+  const sessionTasks = [
     "Prepare promotion",
     "Plan the session",
     "Review the post-session editorial",
-  ].forEach((title, index) => {
-    insertTask.run(
+  ];
+  for (const [index, title] of sessionTasks.entries()) {
+    await insertTask.run(
       id(),
       userId,
       (data.cycle_id as string | null) || null,
@@ -755,10 +760,10 @@ function makeSessionPlan(
       stamp,
       stamp,
     );
-  });
+  }
 }
 
-app.post("/api/:resource", requireUser, (req, res, next) => {
+app.post("/api/:resource", requireUser, async (req, res, next) => {
   try {
     const resource = resourceFor(req.params.resource);
     if (!resource || resource === "cycles")
@@ -773,8 +778,8 @@ app.post("/api/:resource", requireUser, (req, res, next) => {
         return res
           .status(400)
           .json({ error: `${key.replaceAll("_", " ")} is required.` });
-    validateReferences(data, userId);
-    validateBusinessRules(resource, data, undefined, userId);
+    await validateReferences(data, userId);
+    await validateBusinessRules(resource, data, undefined, userId);
     const newId = id();
     const stamp = now();
     const fields = [
@@ -791,21 +796,21 @@ app.post("/api/:resource", requireUser, (req, res, next) => {
       stamp,
       stamp,
     ] as Array<string | number | null>;
-    db.exec("BEGIN IMMEDIATE");
+    await db.exec("BEGIN IMMEDIATE");
     try {
-      db.prepare(
+      await db.prepare(
         `INSERT INTO ${resource}(${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`,
       ).run(...values);
-      if (resource === "chapter_sessions") makeSessionPlan(userId, newId, data);
-      db.exec("COMMIT");
+      if (resource === "chapter_sessions") await makeSessionPlan(userId, newId, data);
+      await db.exec("COMMIT");
     } catch (error) {
-      db.exec("ROLLBACK");
+      await db.exec("ROLLBACK");
       throw error;
     }
     return res
       .status(201)
       .json(
-        db
+        await db
           .prepare(`SELECT * FROM ${resource} WHERE id=? AND user_id=?`)
           .get(newId, userId),
       );
@@ -813,13 +818,13 @@ app.post("/api/:resource", requireUser, (req, res, next) => {
     return next(error);
   }
 });
-app.patch("/api/:resource/:id", requireUser, (req, res, next) => {
+app.patch("/api/:resource/:id", requireUser, async (req, res, next) => {
   try {
     const resource = resourceFor(req.params.resource);
     if (!resource)
       return res.status(404).json({ error: "Resource not found." });
     const userId = (res.locals.session as UserSession).user_id;
-    const existing = db
+    const existing = await db
       .prepare(`SELECT * FROM ${resource} WHERE id=? AND user_id=?`)
       .get(req.params.id, userId) as Record<string, unknown> | undefined;
     if (!existing) return res.status(404).json({ error: "Record not found." });
@@ -836,11 +841,11 @@ app.patch("/api/:resource/:id", requireUser, (req, res, next) => {
         return res
           .status(400)
           .json({ error: `${key.replaceAll("_", " ")} is required.` });
-    validateReferences(data, userId);
-    validateBusinessRules(resource, data, existing, userId);
+    await validateReferences(data, userId);
+    await validateBusinessRules(resource, data, existing, userId);
     const keys = Object.keys(data);
     if (keys.length)
-      db.prepare(
+      await db.prepare(
         `UPDATE ${resource} SET ${keys.map((key) => `${key}=?`).join(",")},updated_at=? WHERE id=? AND user_id=?`,
       ).run(
         ...keys.map((key) => data[key] as string | number | null),
@@ -849,7 +854,7 @@ app.patch("/api/:resource/:id", requireUser, (req, res, next) => {
         userId,
       );
     return res.json(
-      db
+      await db
         .prepare(`SELECT * FROM ${resource} WHERE id=? AND user_id=?`)
         .get(req.params.id, userId),
     );
@@ -857,7 +862,7 @@ app.patch("/api/:resource/:id", requireUser, (req, res, next) => {
     return next(error);
   }
 });
-app.delete("/api/:resource/:id", requireUser, (req, res, next) => {
+app.delete("/api/:resource/:id", requireUser, async (req, res, next) => {
   try {
     const resource = resourceFor(req.params.resource);
     if (!resource)
@@ -866,7 +871,7 @@ app.delete("/api/:resource/:id", requireUser, (req, res, next) => {
       return res
         .status(400)
         .json({ error: "Archive this record instead to preserve history." });
-    const result = db
+    const result = await db
       .prepare(`DELETE FROM ${resource} WHERE id=? AND user_id=?`)
       .run(req.params.id, (res.locals.session as UserSession).user_id);
     if (!Number(result.changes))
