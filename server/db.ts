@@ -55,61 +55,13 @@ export function dateInZone(timeZone: string, date = new Date()): string {
 }
 
 const defaultTemplates = [
-  {
-    title:
-      "Publish today's Graphic Design with AI course promotion on WhatsApp Status",
-    category: "Course Growth",
-    priority: "high",
-    estimated_minutes: 20,
-  },
-  {
-    title: "Respond to course enquiries and follow up warm leads",
-    category: "Course Growth",
-    priority: "high",
-    estimated_minutes: 30,
-  },
-  {
-    title: "Complete and log 20 targeted client outreach actions",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 75,
-  },
-  {
-    title:
-      "Review the 5 AM batch: 10 job listings and 10 trigger-based outreach targets",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 25,
-    scheduled_time: "05:00",
-  },
-  {
-    title:
-      "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 25,
-    scheduled_time: "06:00",
-  },
-  {
-    title:
-      "Review the 8 AM batch: 10 fresh job listings and 10 trigger-based outreach targets",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 25,
-    scheduled_time: "08:00",
-  },
-  {
-    title: "Capture one useful idea or lesson for your personal brand",
-    category: "Personal Brand",
-    priority: "medium",
-    estimated_minutes: 15,
-  },
-  {
-    title: "Record today's wins, blockers and tomorrow's first action",
-    category: "Personal",
-    priority: "low",
-    estimated_minutes: 10,
-  },
+  { title: "Publish one useful piece of content today on Instagram and/or WhatsApp", category: "Personal Brand", priority: "high", estimated_minutes: 45 },
+  { title: "Promote Graphic Design with AI; respond to enquiries and follow up warm leads", category: "Course Growth", priority: "high", estimated_minutes: 40 },
+  { title: "Research 10 new/emerging businesses and 10 established businesses", category: "Client Pipeline", priority: "high", estimated_minutes: 45 },
+  { title: "Send 20 relevant client outreach messages/proposals and log each interaction", category: "Client Pipeline", priority: "high", estimated_minutes: 60 },
+  { title: "Research and contact 3 promotional partners for Graphic Design with AI", category: "Course Growth", priority: "high", estimated_minutes: 30 },
+  { title: "Capture one useful AI, design or creative-industry development", category: "Personal Brand", priority: "medium", estimated_minutes: 20 },
+  { title: "Record today's wins, blockers and tomorrow's first action", category: "Personal", priority: "low", estimated_minutes: 10 },
 ];
 
 // Migrate only the untouched starter routine; preserve personalised routines.
@@ -422,14 +374,16 @@ export async function createWorkspace(
         "Build with intention",
         "Sell 68 seats of Graphic Design with AI while building a consistent creative and client pipeline.",
         [
-          "Sell 68 seats of Graphic Design with AI",
-          "Host a Next Chapter conversation every Friday",
-          "Complete two substantial creative projects each week",
-          "Publish course-related content on Tuesday, Wednesday, and Friday",
-          "Produce two substantial Next Chapter content pieces weekly",
-          "Complete 20 client outreach actions daily",
-          "Develop a consistent personal brand across platforms",
-          "Use weekends for content development and weekly preparation",
+          "Sell 68 seats of Graphic Design with AI at the ₦14,900 launch price.",
+          "Host Next Chapter live every Friday.",
+          "Complete two substantial Creative Studio projects each week.",
+          "Publish on all seven days; Tuesday, Wednesday and Friday include course-growth content.",
+          "Produce two substantial Next Chapter content pieces weekly.",
+          "Research 10 new/emerging and 10 established businesses daily; record research separately from actual outreach and send 20 relevant approaches.",
+          "Research and contact three promotional partners daily for Graphic Design with AI (not Next Chapter).",
+          "Develop the monthly content bank and publish a YouTube/free tutorial by Thursday.",
+          "Advance two brand-identity projects; first project's content is ready Wednesday.",
+          "Use weekends for content batching and weekly preparation.",
         ].join("\n"),
         68,
         1013200,
@@ -532,80 +486,52 @@ export async function ensureDailyPlan(
 
   const weekdayNumber = weekday(day);
   const planned = [...templates.slice(0, 20)];
-  const add = (
-    title: string,
-    category: string,
-    priority = "high",
-    minutes = 60,
-  ) => planned.push({ title, category, priority, estimated_minutes: minutes });
-  if (weekdayNumber >= 1 && weekdayNumber <= 3)
-    add(
-      "Creative Project 1 \u2014 complete today's planned milestone",
-      "Creative Studio",
-      "high",
-      120,
-    );
-  if (weekdayNumber === 4 || weekdayNumber === 5)
-    add(
-      "Creative Project 2 \u2014 complete today's planned milestone",
-      "Creative Studio",
-      "high",
-      120,
-    );
-  if ([2, 3, 5].includes(weekdayNumber))
-    add(
-      "Publish and distribute this week's course-growth content",
-      "Course Growth",
-      "high",
-      45,
-    );
-  if (weekdayNumber === 2 || weekdayNumber === 4)
-    add(
-      "Develop one substantial Next Chapter content piece",
-      "Next Chapter",
-      "medium",
-      60,
-    );
-  if (weekdayNumber === 5) {
-    add(
-      "Prepare and deliver the weekly Next Chapter live session",
-      "Next Chapter",
-      "high",
-      90,
-    );
-    add(
-      "Review next week's guest and session readiness",
-      "Next Chapter",
-      "high",
-      20,
-    );
+  const add = (title: string, category: string, priority = "high", minutes = 60) =>
+    planned.push({ title, category, priority, estimated_minutes: minutes });
+
+  // Daily operating rhythm plus a concrete seven-day execution plan.
+  if (weekdayNumber === 1) {
+    add("Choose both Creative Studio projects and define this week's deliverables", "Creative Studio", "high", 30);
+    add("Start Creative Project 1: build the social-media campaign (Monday–Wednesday)", "Creative Studio", "high", 120);
+    add("Write the monthly content bank plan and this week's publishing schedule", "Personal Brand", "high", 60);
+    add("Write the Next Chapter announcement and session script", "Next Chapter", "high", 40);
+    add("Hold the team strategy meeting and assign owners and deadlines", "Team Workspace", "high", 45);
+    add("Brief designers on the Next Chapter main flyer, speaker-bio flyer and separate advertising flyer", "Next Chapter", "high", 30);
+    add("Begin recruiting a Social Media Manager (separate from the existing Community Manager)", "Personal Brand", "high", 30);
+    add("Select and publish Monday's planned post", "Personal Brand", "high", 45);
+    add("Start Brand Identity Project 1; prepare its first content milestone for Wednesday", "Creative Studio", "high", 90);
   }
-  if (weekdayNumber === 6)
-    add(
-      "Batch creative assets and prepare next week's content drafts",
-      "Personal Brand",
-      "high",
-      90,
-    );
+  if (weekdayNumber === 2) {
+    add("Publish Carousel 1 and distribute it", "Personal Brand", "high", 45);
+    add("Continue Creative Project 1 campaign build", "Creative Studio", "high", 120);
+    add("Develop one substantial Next Chapter content piece", "Next Chapter", "medium", 60);
+  }
+  if (weekdayNumber === 3) {
+    add("Publish Brand Identity Project 1 reveal/content (first project ready today)", "Personal Brand", "high", 60);
+    add("Publish the Creative Project 1 campaign output as a second post", "Creative Studio", "high", 45);
+    add("Complete Creative Project 1 campaign deliverables", "Creative Studio", "high", 90);
+    add("Develop one substantial Next Chapter content piece", "Next Chapter", "medium", 60);
+  }
+  if (weekdayNumber === 4) {
+    add("Publish Carousel 2", "Personal Brand", "high", 45);
+    add("Publish the YouTube free tutorial and share it with the community", "Personal Brand", "high", 90);
+    add("Start Creative Project 2: the simpler flyer project", "Creative Studio", "high", 120);
+  }
+  if (weekdayNumber === 5) {
+    add("Publish and promote Friday's Next Chapter content", "Next Chapter", "high", 45);
+    add("Prepare and deliver the weekly Next Chapter live session", "Next Chapter", "high", 90);
+    add("Review next week's guest and session readiness", "Next Chapter", "high", 20);
+    add("Continue and finish Creative Project 2 flyer", "Creative Studio", "high", 90);
+  }
+  if (weekdayNumber === 6) {
+    add("Publish the second installment of Brand Identity Project 2", "Personal Brand", "high", 60);
+    add("Batch creative assets and prepare next week's content drafts", "Personal Brand", "high", 90);
+  }
   if (weekdayNumber === 0) {
-    add(
-      "Batch content and prepare the coming week's publishing schedule",
-      "Personal Brand",
-      "high",
-      90,
-    );
-    add(
-      "Plan two creative projects and confirm weekly milestones",
-      "Creative Studio",
-      "high",
-      30,
-    );
-    add(
-      "Create next Friday's Next Chapter session plan and begin guest outreach",
-      "Next Chapter",
-      "high",
-      30,
-    );
+    add("Publish Creative Project 2 output", "Creative Studio", "high", 45);
+    add("Batch content and prepare the coming week's publishing schedule", "Personal Brand", "high", 90);
+    add("Review both weekly Creative Studio projects and set next milestones", "Creative Studio", "high", 30);
+    add("Create next Friday's Next Chapter session plan and begin guest outreach", "Next Chapter", "high", 30);
   }
 
   // Carry-forward is an explicit user action in My Day or cycle rollover.
