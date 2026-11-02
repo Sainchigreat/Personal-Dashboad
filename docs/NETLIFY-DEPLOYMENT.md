@@ -7,11 +7,38 @@
 
 ---
 
-## 1. Honest status: why there is no Netlify URL yet
+## 0. The deployed site you supplied (inspected 2 November 2026)
 
-A real Netlify deployment **could not be created from this sandbox**. This is not a
-code problem; every part of the app is built and tested. The blockers are access
-and network:
+**URL:** `https://p-momentum-os.netlify.app/`
+
+| Probe | Result |
+| --- | --- |
+| `GET /` | Loads the Momentum OS React shell, but renders **"Unable to open your workspace / The server returned an unexpected response."** |
+| `GET /api/auth/status` | Netlify **"Page not found"** HTML — no Function, no `/api/*` rewrite |
+| `GET /api/pg/health` | Netlify **"Page not found"** HTML |
+| Netlify badge | "Build your own site with Netlify … Drop a site you already have" — typical of a **static / Drop deploy** |
+| GitHub deployments API | still `[]`, 0 environments, no Netlify PR checks |
+
+**Diagnosis:** this is a **static-only deploy of the real app** (the bundle calls
+relative `/api`, from `src/lib/api.ts`), not the browser-only preview demo. With
+no Netlify Function behind `/api/*`, `api.ts` cannot JSON-parse the 404 HTML and
+throws `"The server returned an unexpected response."`, which the store shows as
+"Unable to open your workspace". It is **not** connected to this repository:
+merging PR #4 into `main` will **not** by itself update this site.
+
+**To fix the live site:** connect the site to `Sainchigreat/Personal-Dashboad`
+(build from `main` after the merge), set the env vars in §4, and redeploy so the
+Function + `/api/*` redirect are included. Until then the frontend will keep
+showing that error. `DATABASE_URL` is still required for the Function to serve
+data.
+
+---
+
+## 1. Why I could not create or refresh a deployment from this sandbox
+
+The URL is now known (§0), but a deployment **could not be created or refreshed
+from this sandbox**. This is not a code problem; every part of the app is built
+and tested. The blockers are access and network:
 
 | Check | Result |
 | --- | --- |
@@ -29,9 +56,10 @@ and network:
 | `node fetch('https://api.netlify.com/...')` | `ECONNRESET` |
 
 The sandbox permits outbound traffic only to GitHub, npm and PyPI hosts.
-`api.netlify.com` is unreachable, so even an anonymous static deploy cannot be
-uploaded. **I will not invent or guess a Netlify URL** — the several
-`*.netlify.app` sites found by web search belong to unrelated projects.
+`api.netlify.com` and `p-momentum-os.netlify.app` are both unreachable from
+`bash`/Node (`SSL_ERROR_SYSCALL`); only the read-only web fetch tool can see the
+live site. So no deploy can be uploaded or verified from here. Earlier web
+searches found only unrelated `*.netlify.app` sites; the real URL came from you.
 
 What *is* available right now: a **local production-build preview** of the exact
 `dist/` Netlify would publish (port 4173), plus the full dev preview (port 5173 /
@@ -232,9 +260,11 @@ ports 4173 (`dist/` production build) and 5173 (dev preview with demo data).
 
 ## 9. Exact next actions to make Momentum OS production-ready
 
-1. **Give me the Netlify site URL / site ID** (or connect Netlify in Arena / set
-   `NETLIFY_AUTH_TOKEN` + `NETLIFY_SITE_ID` in the host). Then I can deploy a
-   preview from this branch and report the real URL.
+1. **Connect `https://p-momentum-os.netlify.app` to this repository** (Netlify →
+   Site configuration → Build & deploy → Repository → link
+   `Sainchigreat/Personal-Dashboad`, production branch `main`) so the merged code
+   actually builds there. Alternatively give me `NETLIFY_AUTH_TOKEN` +
+   `NETLIFY_SITE_ID` on a host with Netlify API access so I can deploy a preview.
 2. **Set `DATABASE_URL`** in Netlify → Site configuration → Environment
    variables, scoped to Functions, using the pooled connection string from the
    existing `Momentum` project. **Do not paste it into chat or Git.**
