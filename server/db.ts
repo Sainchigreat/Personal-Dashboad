@@ -10,10 +10,9 @@
 // AsyncLocalStorage context keeps BEGIN/COMMIT/ROLLBACK on one pooled client,
 // so the original transaction boundaries remain atomic on both backends.
 
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 import { chmodSync, mkdirSync, readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import {
   getPool,
@@ -153,9 +152,15 @@ const legacyTemplates = [
   },
 ];
 
+// Load node:sqlite lazily. The deployed Netlify Function only ever uses the
+// PostgreSQL backend; requiring the built-in conditionally means an older Node
+// 22 runtime without node:sqlite cannot break the function at import time.
+const nodeRequire = createRequire(`${process.cwd()}/momentum-db.cjs`);
+
 // ------------------------------------------------------------ SQLite backend
 function createSqliteBackend(): Db {
-  const here = dirname(fileURLToPath(import.meta.url));
+  const { DatabaseSync } = nodeRequire("node:sqlite") as typeof import("node:sqlite");
+  const schemaPath = resolve(process.cwd(), "server", "schema.sql");
   const dataDir = resolve(
     process.env.DATA_DIR ||
       (process.env.MOMENTUM_PREVIEW === "1"
@@ -169,7 +174,7 @@ function createSqliteBackend(): Db {
   sqlite.exec(
     "PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;",
   );
-  sqlite.exec(readFileSync(resolve(here, "schema.sql"), "utf8"));
+  sqlite.exec(readFileSync(schemaPath, "utf8"));
 
   // Additive migrations for workspaces created by an earlier version.
   const columns = (table: string) =>

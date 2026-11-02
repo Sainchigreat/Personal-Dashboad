@@ -114,10 +114,12 @@ Every `db.prepare(...).get/all/run` and `db.exec(...)` call in `server/db.ts`, `
 | No new Supabase project | ✅ | `list_projects` returns one project |
 | Versioned PostgreSQL migration | ✅ | 4th migration recorded; `supabase/migrations/` in Git |
 | Database connected (real write/read round trip) | ✅ | §4, two separate server-side requests |
-| Build / type-check | ✅ | `npm run build` — `tsc --noEmit` + Vite build clean |
-| Automated tests | ✅ | `npm test` — 13 files / 57 tests pass (47 SQLite-mode + 10 PostgreSQL acceptance) |
+| Build / type-check | ✅ | `npm run build` — `tsc --noEmit` + Vite build clean; `dist/` production output verified |
+| Automated tests | ✅ | `npm test` — 14 files / 65 tests pass (47 SQLite-mode + 10 PostgreSQL acceptance + 8 Netlify Function tests) |
+| Netlify build config + Function routing | ✅ | `netlify.toml` verified; `normalizeEvent()` handles both `/api/*` and `/.netlify/functions/api/*` shapes; `tests/netlify-function.test.ts` 8/8 |
+| Deploy verification script | ✅ | `npm run verify:netlify -- --url <URL>` — read-only smoke + opt-in write/read acceptance; local production-build preview returns 4 PASS / 1 WARN |
 | Express routes converted to async PostgreSQL | ✅ | §5b, all three server files awaited; verified against a real PostgreSQL engine |
 | Netlify Functions entry point ready | ✅ | wrapper serves the async app whenever `DATABASE_URL` is set; fails closed only when the secret is missing |
-| Site deployed & API health verified on Netlify | ❌ **not verified** | cannot be claimed from this sandbox; no Netlify connector or deployed URL |
+| Site deployed & API health verified on Netlify | ❌ **not verified** | no Netlify connector, token, site ID, deployed URL or reachable Netlify API from this sandbox. The CLI fails with `Authentication required` and the anonymous deploy fails with `TypeError: fetch failed` (`api.netlify.com` unreachable). See `docs/NETLIFY-DEPLOYMENT.md` |
 
-> This sandbox permits outbound traffic only to GitHub/npm/PyPI hosts, so a live `pg` connection to Supabase cannot be opened from Node here. The async path was therefore verified against an in-process real PostgreSQL engine (PGlite) using the exact `momentum_os` migration, plus the live server-side SQL round trip in §4. `npm run verify:db` remains available for a machine/host with database access. What is still NOT proven is a deployed Netlify function reaching Supabase over the network — that requires `DATABASE_URL` in Netlify and a deployed URL, neither of which is available here.
+> This sandbox permits outbound traffic only to GitHub/npm/PyPI hosts, so neither a live `pg` connection from Node nor a Netlify upload can be opened here. The async path was verified against an in-process real PostgreSQL engine (PGlite) using the exact `momentum_os` migration, the Netlify Function handler was exercised with Netlify-shaped events, translated SQL was executed server-side on the live Supabase database, and the live Edge Function `/health` still returns `status: ok`. What is still NOT proven is a deployed Netlify function reaching Supabase over the network — that requires `DATABASE_URL` in Netlify and a deployed URL. A local production-build preview of `dist/` remains available.

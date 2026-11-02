@@ -131,7 +131,33 @@ Copy `.env.example` to `.env` if desired, or provide environment variables throu
 
 For production, run `npm ci`, `npm run build`, then `npm start` behind an HTTPS reverse proxy. Set `DATA_DIR` to a **durable, private, writable volume**; application files and ephemeral containers alone are not durable storage. Protect the initial setup URL and create the owner account immediately. The proxy should strip untrusted forwarded headers and apply its own rate limiting. Secure cookies require HTTPS for remote access. Back up the database volume regularly using a SQLite-consistent backup (or stop the server before copying the database and its WAL files); the in-app JSON export is an additional portable backup. Do not commit databases, exports containing personal information, `.env`, or credentials.
 
-This SQLite deployment is intended for **one server instance / one owner and one shared team**, not serverless or multi-instance shared storage. For multi-device cloud hosting, use the Momentum AI Supabase backend described above; the client adapter in `src/lib/api.ts` is the seam to switch from `/api` to the Edge Function. The sandbox preview is not a production deployment. The in-app JSON export includes personal records and shared team work but omits passwords, sessions, and invitation token hashes; it cannot restore accounts. A durable SQLite backup is required for full recovery.
+This SQLite deployment is intended for **one server instance / one owner and one shared team**, not serverless or multi-instance shared storage. The Express API is now fully async: with `DATABASE_URL` set it uses the `momentum_os` PostgreSQL schema on the existing Supabase Momentum project instead of SQLite, which is what the Netlify Function does. The sandbox preview is not a production deployment. The in-app JSON export includes personal records and shared team work but omits passwords, sessions, and invitation token hashes; it cannot restore accounts. A durable SQLite backup is required for full recovery in SQLite mode.
+
+## Netlify deployment
+
+`netlify.toml` builds `dist/`, publishes it, and routes `/api/*` to
+`netlify/functions/api.ts` **before** the SPA fallback. The Function serves the
+async PostgreSQL API and fails closed with 503 when `DATABASE_URL` is absent.
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | **Yes** | Server-only secret — pooled connection string from the existing Momentum project. Never `VITE_`, never committed. |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Yes (build) | Public publishable values; Vite bakes them into `dist/` at build time. |
+| `PG_POOL_MAX` | No | Default 5; keep low for serverless. |
+| `NODE_ENV` | Auto | `production` on Netlify. |
+| `MOMENTUM_PREVIEW` | Must be unset | Never `1` on a real deployment. |
+
+Full instructions, the exact deploy commands, the post-deploy verification
+script and the current deployment blockers are in
+**[docs/NETLIFY-DEPLOYMENT.md](docs/NETLIFY-DEPLOYMENT.md)**. Quick checks:
+
+```bash
+npm run verify:netlify -- --url https://YOUR-SITE.netlify.app
+npm run verify:netlify -- --url https://YOUR-SITE.netlify.app --acceptance
+```
+
+No Netlify deploy has been created from this sandbox (no Netlify connector,
+token, site ID or reachable Netlify API). No database secret is committed.
 
 ## Deliberate limits / future phases
 

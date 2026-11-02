@@ -1,6 +1,6 @@
 // Netlify Functions entry point for the async PostgreSQL-backed Express API.
 //
-// The route layer (server/index.ts, server/team.ts, server/db.ts) is now fully
+// The route layer (server/index.ts, server/team.ts, server/db.ts) is fully
 // async and uses server/postgres.ts whenever DATABASE_URL is present. Importing
 // the Express app must not call app.listen(), hence MOMENTUM_IMPORT_ONLY.
 //
@@ -17,8 +17,14 @@ type Event = {
   isBase64Encoded?: boolean;
   queryStringParameters?: Record<string, string> | null;
   multiValueQueryStringParameters?: Record<string, string[]> | null;
+  multiValueHeaders?: Record<string, string[]>;
   rawUrl?: string;
-  requestContext?: unknown;
+  rawPath?: string;
+  rawQueryString?: string;
+  requestPath?: string;
+  requestContext?: Record<string, unknown>;
+  version?: string;
+  cookies?: string[];
 };
 type Context = Record<string, unknown>;
 type Result = {
@@ -29,15 +35,46 @@ type Result = {
   multiValueHeaders?: Record<string, string[]>;
 };
 
+const FN_PREFIX = "/.netlify/functions/api";
+
+/**
+ * Netlify's `/api/* -> /.netlify/functions/api/:splat` rewrite may surface
+ * either the original path (`/api/...`) or the rewritten function path.
+ * Express routes are registered under /api, so normalise both shapes. Also
+ * supply the fields serverless-http's AWS provider expects.
+ */
+export function normalizeEvent(event: Event): Event {
+  const raw = event.path || "/";
+  const path =
+    raw === FN_PREFIX || raw.startsWith(`${FN_PREFIX}/`)
+      ? `/api${raw.slice(FN_PREFIX.length)}`
+      : raw;
+  return {
+    ...event,
+    path,
+    ...(event.rawPath ? { rawPath: path } : {}),
+    ...(event.requestPath ? { requestPath: path } : {}),
+    body: event.body ?? "",
+    headers: event.headers || {},
+    isBase64Encoded: event.isBase64Encoded ?? false,
+    requestContext: event.requestContext || {},
+  };
+}
+
 const json = (statusCode: number, payload: unknown): Result => ({
   statusCode,
   headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   body: JSON.stringify(payload),
 });
 
-let wrapped: ((event: Event, context: Context) => Promise<Result>) | null = null;
+let wrapped:
+  | ((event: Event, context: Context) => Promise<Result>)
+  | null = null;
 
-export const handler = async (event: Event, context: Context): Promise<Result> => {
+export const handler = async (
+  event: Event,
+  context: Context,
+): Promise<Result> => {
   if (!process.env.DATABASE_URL) {
     return json(503, {
       error: "DATABASE_URL is not configured.",
@@ -54,5 +91,5 @@ export const handler = async (event: Event, context: Context): Promise<Result> =
       context: Context,
     ) => Promise<Result>;
   }
-  return wrapped(event, context);
+  return wrapped(normalizeEvent(event), context);
 };

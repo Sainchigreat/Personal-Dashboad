@@ -14,7 +14,8 @@
     "build:preview": "npm run build && tsx scripts/build-preview.ts",
     "verify:cloud": "node scripts/verify-cloud.mjs",
     "verify:db": "tsx scripts/verify-db.ts",
-    "import:sqlite": "tsx scripts/import-sqlite.ts"
+    "import:sqlite": "tsx scripts/import-sqlite.ts",
+    "verify:netlify": "node scripts/verify-netlify.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.5",

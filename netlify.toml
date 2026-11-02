@@ -21,8 +21,18 @@
 
 [functions]
   node_bundler = "esbuild"
+  # Keep express (and the async-error patch that reaches into express/lib/router)
+  # external so both resolve to the same runtime module instance.
+  external_node_modules = ["express", "express-async-errors"]
 
-# API routing MUST precede the SPA fallback.
+# Local `netlify dev` mirrors the deployed redirects and functions.
+[dev]
+  port = 8888
+  publish = "dist"
+  functions = "netlify/functions"
+
+# API routing MUST precede the SPA fallback. :splat preserves the sub-path;
+# netlify/functions/api.ts normalises either path shape back to /api/*.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
