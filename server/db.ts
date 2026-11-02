@@ -123,6 +123,12 @@ const defaultTemplates = [
     estimated_minutes: 75,
   },
   {
+    title: "Find and contact 3 partners to share the AI design course",
+    category: "Course Growth",
+    priority: "high",
+    estimated_minutes: 25,
+  },
+  {
     title: "Capture one useful AI, design or creative-industry development",
     category: "Personal Brand",
     priority: "medium",
