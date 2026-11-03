@@ -268,11 +268,32 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
       await createWorkspace(userId, email, passwordHash, input.name);
       return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
     }
-    if (!input.inviteToken)
-      return res.status(403).json({
-        error:
-          "This private workspace has already been set up. A team invitation is required.",
-      });
+    if (!input.inviteToken) {
+      // Public self-service signup creates a completely separate personal
+      // workspace. It never joins the first user's workspace or copies their
+      // goals, cycles, products, tasks, clients, or team data.
+      const existing = await db
+        .prepare("SELECT id FROM users WHERE lower(email)=?")
+        .get(email);
+      if (existing)
+        return res.status(409).json({
+          error: "An account with this email already exists. Please sign in.",
+        });
+      const passwordHash = await bcrypt.hash(input.password, 12);
+      const userId = id();
+      try {
+        await createWorkspace(userId, email, passwordHash, input.name);
+      } catch (error) {
+        // A concurrent signup may win the unique-email race after the lookup.
+        const message = error instanceof Error ? error.message : "";
+        if (/unique|duplicate/i.test(message))
+          return res.status(409).json({
+            error: "An account with this email already exists. Please sign in.",
+          });
+        throw error;
+      }
+      return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
+    }
     const lookup = async () =>
       await db
         .prepare(
