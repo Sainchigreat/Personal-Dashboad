@@ -265,7 +265,7 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
           .status(403)
           .json({ error: "This private workspace has already been set up." });
       const userId = id();
-      await createWorkspace(userId, email, passwordHash, input.name);
+      await createWorkspace(userId, email, passwordHash, input.name, true);
       return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
     }
     if (!input.inviteToken) {
