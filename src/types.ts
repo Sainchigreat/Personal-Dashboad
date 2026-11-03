@@ -7,6 +7,8 @@ export type Page =
   | "brand"
   | "pipeline"
   | "review"
+  | "goals"
+  | "speakers"
   | "team"
   | "cloud"
   | "settings";
@@ -44,6 +46,8 @@ export interface Settings extends Base {
   notifications_enabled: number;
   auto_plan: number;
   daily_templates: string;
+  onboarding_completed: number;
+  onboarding_profile: string;
 }
 export interface Cycle extends Base {
   month: string;
@@ -70,6 +74,7 @@ export interface Task extends Base {
   project_id: string | null;
   session_id: string | null;
   carried_from_id: string | null;
+  weekly_goal_id: string | null;
   title: string;
   description: string;
   category: string;
@@ -213,6 +218,90 @@ export interface WeeklyReview extends Base {
   lessons: string;
   priorities: string;
 }
+/** Monthly -> Weekly -> Daily goal hierarchy (additive schema). */
+export interface MonthlyGoal extends Base {
+  workspace_id: string;
+  title: string;
+  description: string;
+  category: string;
+  metric_type: "outcome" | "project" | "behaviour";
+  source:
+    | "manual"
+    | "tasks"
+    | "sales"
+    | "revenue"
+    | "publishing"
+    | "outreach"
+    | "projects";
+  target: number;
+  unit: string;
+  baseline: number;
+  status: "active" | "archived" | "completed";
+  start_date: string | null;
+  end_date: string | null;
+  notes: string;
+}
+export interface WeeklyGoal extends Base {
+  workspace_id: string;
+  monthly_goal_id: string | null;
+  cycle_id: string | null;
+  week_start: string;
+  week_end: string;
+  outcome: string;
+  target: number;
+  unit: string;
+  current: number;
+  source:
+    | "manual"
+    | "tasks"
+    | "sales"
+    | "revenue"
+    | "publishing"
+    | "outreach"
+    | "projects";
+  owner_id: string | null;
+  assignee_id: string | null;
+  priority: "high" | "medium" | "low";
+  status: "active" | "archived" | "completed" | "carried";
+  visibility: "private" | "team";
+  notes: string;
+}
+export interface GoalLink {
+  weekly_goal_id: string;
+  monthly_goal_id: string;
+}
+export interface Speaker extends Base {
+  workspace_id: string;
+  session_id: string | null;
+  name: string;
+  email: string;
+  phone: string;
+  organisation: string;
+  biography: string;
+  topic: string;
+  invitation_status:
+    | "not_invited"
+    | "invited"
+    | "awaiting_response"
+    | "confirmed"
+    | "declined"
+    | "completed";
+  confirmation_status: "pending" | "confirmed" | "declined";
+  agreed_date: string | null;
+  alternative_dates: string;
+  reminder_dates: string;
+  asset_requirements: string;
+  bio_photo_received: number;
+  flyer_approved: number;
+  owner_id: string | null;
+  notes: string;
+}
+export interface SpeakerFollowup extends Base {
+  speaker_id: string;
+  occurred_date: string;
+  channel: string;
+  summary: string;
+}
 export interface Data {
   settings: Settings;
   cycles: Cycle[];
@@ -231,6 +320,11 @@ export interface Data {
   content_items: ContentItem[];
   daily_notes: DailyNote[];
   weekly_reviews: WeeklyReview[];
+  monthly_goals: MonthlyGoal[];
+  weekly_goals: WeeklyGoal[];
+  goal_links: GoalLink[];
+  speakers: Speaker[];
+  speaker_followups: SpeakerFollowup[];
 }
 export type Resource = Exclude<keyof Data, "settings">;
 export interface AuthStatus {

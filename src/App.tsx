@@ -1,6 +1,7 @@
 import { AppProvider, useApp } from "./lib/store";
 import Shell from "./components/Shell";
 import Forms from "./components/Forms";
+import Onboarding from "./components/Onboarding";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import MyDay from "./pages/MyDay";
@@ -10,6 +11,8 @@ import Chapter from "./pages/Chapter";
 import Brand from "./pages/Brand";
 import Pipeline from "./pages/Pipeline";
 import Review from "./pages/Review";
+import Goals from "./pages/Goals";
+import Speakers from "./pages/Speakers";
 import Settings from "./pages/Settings";
 import TeamWorkspace from "./pages/TeamWorkspace";
 import TeamPortal from "./pages/TeamPortal";
@@ -27,6 +30,8 @@ function Workspace() {
     brand: <Brand />,
     pipeline: <Pipeline />,
     review: <Review />,
+    goals: <Goals />,
+    speakers: <Speakers />,
     team: <TeamWorkspace auth={auth} />,
     cloud: <Cloud />,
     settings: <Settings />,
@@ -35,6 +40,7 @@ function Workspace() {
     <>
       <Shell>{views[page]}</Shell>
       <Forms />
+      <Onboarding />
     </>
   );
 }

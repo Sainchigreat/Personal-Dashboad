@@ -3,13 +3,13 @@ name: Momentum OS CI
 on:
   pull_request:
     branches:
-      - arena/0d207c00-personal-dashboad
-      - arena/a531ed6e-personal-dashboad
+      - 'arena/**'
+      - 'feature/**'
       - main
   push:
     branches:
-      - arena/0d207c00-personal-dashboad
-      - arena/a531ed6e-personal-dashboad
+      - 'arena/**'
+      - 'feature/**'
       - main
   workflow_dispatch:
 

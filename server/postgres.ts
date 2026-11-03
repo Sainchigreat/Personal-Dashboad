@@ -29,6 +29,9 @@ export const TABLES = [
   "content_items", "session_checklists", "daily_notes", "weekly_reviews",
   "team_workspaces", "team_members", "team_invites", "team_goals", "team_tasks",
   "team_comments", "team_activity", "integration_checks",
+  // Additive goal hierarchy (20261102000500_goal_hierarchy.sql)
+  "monthly_goals", "weekly_goals", "goal_links",
+  "speakers", "speaker_followups",
 ] as const;
 
 const TABLE_PATTERN = new RegExp(`\\b(${TABLES.join("|")})\\b`, "g");

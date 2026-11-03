@@ -31,6 +31,8 @@ const pages: Page[] = [
   "brand",
   "pipeline",
   "review",
+  "goals",
+  "speakers",
   "team",
   "cloud",
   "settings",

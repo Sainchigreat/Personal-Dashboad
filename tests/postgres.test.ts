@@ -14,6 +14,11 @@ describe("PostgreSQL connection layer", () => {
     expect(typeof isPostgresConfigured()).toBe("boolean");
     expect(TABLES).toContain("users");
     expect(TABLES).toContain("auth_sessions");
+    // Goal-hierarchy tables must be qualified to momentum_os or bootstrap
+    // queries would accidentally hit the public schema.
+    expect(TABLES).toContain("monthly_goals");
+    expect(TABLES).toContain("weekly_goals");
+    expect(TABLES).toContain("goal_links");
     expect(PG_SCHEMA).toBe("momentum_os");
   });
 
