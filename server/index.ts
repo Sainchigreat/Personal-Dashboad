@@ -282,7 +282,7 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
       const passwordHash = await bcrypt.hash(input.password, 12);
       const userId = id();
       try {
-        await createWorkspace(userId, email, passwordHash, input.name);
+        await createWorkspace(userId, email, passwordHash, input.name, false);
       } catch (error) {
         // A concurrent signup may win the unique-email race after the lookup.
         const message = error instanceof Error ? error.message : "";
