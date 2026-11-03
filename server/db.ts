@@ -340,6 +340,7 @@ export async function createWorkspace(
   email: string,
   passwordHash: string,
   name: string,
+  seedInitialOwnerPlan = true,
 ): Promise<void> {
   const stamp = now();
   await db.exec("BEGIN IMMEDIATE");
@@ -362,60 +363,63 @@ export async function createWorkspace(
         "08:00",
         "17:00",
         "light",
-        1,
-        JSON.stringify(defaultTemplates),
+        seedInitialOwnerPlan ? 1 : 0,
+        JSON.stringify(seedInitialOwnerPlan ? defaultTemplates : []),
         stamp,
         stamp,
       );
-    await db
-      .prepare(
-        `INSERT INTO products (id,user_id,name,price,description,active,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?)`,
-      )
-      .run(
-        id(),
-        userId,
-        "Graphic Design with AI",
-        14900,
-        "Digital course",
-        1,
-        stamp,
-        stamp,
-      );
-    await db
-      .prepare(
-        `INSERT INTO cycles (id,user_id,month,theme,objective,objectives,sales_target,revenue_target,outreach_target,projects_target,chapter_content_target,course_days,session_day,status,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      )
-      .run(
-        id(),
-        userId,
-        "2026-11",
-        "Build with intention",
-        "Sell 68 seats of Graphic Design with AI while building a consistent creative and client pipeline.",
-        [
-          "Sell 68 seats of Graphic Design with AI at the ₦14,900 launch price.",
-          "Host Next Chapter live every Friday.",
-          "Complete two substantial Creative Studio projects each week.",
-          "Publish on all seven days; Tuesday, Wednesday and Friday include course-growth content.",
-          "Produce two substantial Next Chapter content pieces weekly.",
-          "Research 10 new/emerging and 10 established businesses daily; record research separately from actual outreach and send 20 relevant approaches.",
-          "Research and contact three promotional partners daily for Graphic Design with AI (not Next Chapter).",
-          "Develop the monthly content bank and publish a YouTube/free tutorial by Thursday.",
-          "Advance two brand-identity projects; first project's content is ready Wednesday.",
-          "Use weekends for content batching and weekly preparation.",
-        ].join("\n"),
-        68,
-        1013200,
-        20,
-        2,
-        2,
-        "2,3,5",
-        5,
-        "active",
-        stamp,
-        stamp,
-      );
+    if (seedInitialOwnerPlan) {
+      await db
+        .prepare(
+          `INSERT INTO products (id,user_id,name,price,description,active,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?)`,
+        )
+        .run(
+          id(),
+          userId,
+          "Graphic Design with AI",
+          14900,
+          "Digital course",
+          1,
+          stamp,
+          stamp,
+        );
+      await db
+        .prepare(
+          `INSERT INTO cycles (id,user_id,month,theme,objective,objectives,sales_target,revenue_target,outreach_target,projects_target,chapter_content_target,course_days,session_day,status,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        )
+        .run(
+          id(),
+          userId,
+          "2026-11",
+          "Build with intention",
+          "Sell 68 seats of Graphic Design with AI while building a consistent creative and client pipeline.",
+          [
+            "Sell 68 seats of Graphic Design with AI at the ₦14,900 launch price.",
+            "Host Next Chapter live every Friday.",
+            "Complete two substantial Creative Studio projects each week.",
+            "Publish on all seven days; Tuesday, Wednesday and Friday include course-growth content.",
+            "Produce two substantial Next Chapter content pieces weekly.",
+            "Research 10 new/emerging and 10 established businesses daily; record research separately from actual outreach and send 20 relevant approaches.",
+            "Research and contact three promotional partners daily for Graphic Design with AI (not Next Chapter).",
+            "Develop the monthly content bank and publish a YouTube/free tutorial by Thursday.",
+            "Advance two brand-identity projects; first project's content is ready Wednesday.",
+            "Use weekends for content batching and weekly preparation.",
+          ].join("\n"),
+          68,
+          1013200,
+          20,
+          2,
+          2,
+          "2,3,5",
+          5,
+          "active",
+          stamp,
+          stamp,
+        );
+  
+    }
     // No owner-specific plan is seeded here. Every new account (including a
     // production signup) starts clean. The verified owner's November plan is
     // applied once, idempotently, by scripts/backfill-goals.ts, which is scoped

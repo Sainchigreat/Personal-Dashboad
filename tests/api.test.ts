@@ -123,18 +123,35 @@ describe("private persistent workspace API", () => {
     });
     cycleId = data.cycles[0].id;
     productId = data.products[0].id;
-    expect(
-      (
-        await request("POST", "/auth/register", {
-          name: "Another",
-          email: "another@example.com",
-          password: "another-strong-password",
-        })
-      ).status,
-    ).toBe(403);
+    const ownerCookie = cookie;
+    const ownerCsrf = csrf;
+    const secondSignup = await request("POST", "/auth/register", {
+      name: "Another Person",
+      email: "another@example.com",
+      password: "another-strong-password",
+    });
+    expect(secondSignup.status).toBe(200);
+    cookie = secondSignup.cookie!.split(";")[0];
+    csrf = secondSignup.body.csrfToken;
+    const secondWorkspace = (await request("GET", "/bootstrap")).body;
+    expect(secondWorkspace.settings.name).toBe("Another Person");
+    expect(secondWorkspace.cycles).toHaveLength(0);
+    expect(secondWorkspace.products).toHaveLength(0);
+    // A new user's workspace is independent; it does not inherit the owner's plan.
+    const ownerLogin = await request("POST", "/auth/login", {
+      email: "owner@example.com",
+      password: "a-strong-test-password",
+    });
+    expect(ownerLogin.status).toBe(200);
+    cookie = ownerLogin.cookie!.split(";")[0];
+    csrf = ownerLogin.body.csrfToken;
+    expect((await request("GET", "/bootstrap")).body.settings.name).toBe("Test Owner");
     expect(
       (await request("PATCH", "/settings", { name: "No CSRF" }, false)).status,
     ).toBe(403);
+    // Keep the original owner session variables intentionally unused after this assertion.
+    expect(ownerCookie).toBeTruthy();
+    expect(ownerCsrf).toBeTruthy();
   });
   it("validates and persists automatic or manual appearance", async () => {
     expect(

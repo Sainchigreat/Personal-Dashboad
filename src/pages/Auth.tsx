@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck, UserRoundPlus } from "lucide-react";
 import { api, setCsrf, setPreviewToken } from "../lib/api";
 import { browserStorage } from "../lib/storage";
 import { invitationToken } from "../lib/invite";
 import type { AuthStatus } from "../types";
 import { Logo } from "../components/UI";
+
+type AuthMode = "signup" | "signin";
 
 export default function Auth({
   status,
@@ -17,8 +19,16 @@ export default function Auth({
 }) {
   const inviteToken = invitationToken();
   const joining = Boolean(inviteToken);
+  const [mode, setMode] = useState<AuthMode>("signup");
+  const signingUp = mode === "signup" || status.needsSetup || joining;
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  function changeMode(next: AuthMode) {
+    setMode(next);
+    setError("");
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -29,21 +39,22 @@ export default function Auth({
         email: String(fields.get("email")),
         password: String(fields.get("password")),
       };
-      if (status.needsSetup || joining) body.name = String(fields.get("name"));
+      if (signingUp) body.name = String(fields.get("name"));
       if (inviteToken) body.inviteToken = inviteToken;
       const result = await api<{ csrfToken: string }>(
-        status.needsSetup || joining ? "/auth/register" : "/auth/login",
+        signingUp ? "/auth/register" : "/auth/login",
         { method: "POST", body },
       );
       setCsrf(result.csrfToken);
       if (joining) history.replaceState(null, "", "/");
       await onAuthenticated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to sign in.");
+      setError(e instanceof Error ? e.message : signingUp ? "Unable to create your account." : "Unable to sign in.");
     } finally {
       setBusy(false);
     }
   }
+
   async function openPreview() {
     setBusy(true);
     setError("");
@@ -62,6 +73,7 @@ export default function Auth({
       setBusy(false);
     }
   }
+
   return (
     <main className="auth-page">
       <div className="auth-top">
@@ -92,13 +104,35 @@ export default function Auth({
         </div>
         <div className="auth-card">
           <div className="auth-icon">
-            <LockKeyhole size={20} />
+            {signingUp ? <UserRoundPlus size={20} /> : <LockKeyhole size={20} />}
           </div>
+          {!joining && !status.needsSetup && (
+            <div className="auth-switch" role="tablist" aria-label="Account access">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={signingUp}
+                className={signingUp ? "active" : ""}
+                onClick={() => changeMode("signup")}
+              >
+                Create account
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!signingUp}
+                className={!signingUp ? "active" : ""}
+                onClick={() => changeMode("signin")}
+              >
+                Sign in
+              </button>
+            </div>
+          )}
           <h2>
             {joining
               ? "Join your team"
-              : status.needsSetup
-                ? "Create your workspace"
+              : signingUp
+                ? status.needsSetup ? "Create your workspace" : "Create your account"
                 : "Welcome back"}
           </h2>
           <p>
@@ -106,17 +140,13 @@ export default function Auth({
               ? status.authenticated
                 ? `You are signed in as ${status.email}. Sign out before accepting this invitation.`
                 : "Create your account using the email address the invitation was sent to."
-              : status.needsSetup
-                ? "Set up a private owner account to get started."
+              : signingUp
+                ? "Start with your own private workspace. You can plan your month, break it into weeks, and organise each day."
                 : "Sign in to continue where you left off."}
           </p>
           {joining && status.authenticated ? (
             <div className="auth-form">
-              {error && (
-                <div className="form-error" role="alert">
-                  {error}
-                </div>
-              )}
+              {error && <div className="form-error" role="alert">{error}</div>}
               <button
                 className="button primary wide"
                 disabled={busy}
@@ -126,9 +156,7 @@ export default function Auth({
                   try {
                     await onSignOut();
                   } catch (e) {
-                    setError(
-                      e instanceof Error ? e.message : "Unable to sign out.",
-                    );
+                    setError(e instanceof Error ? e.message : "Unable to sign out.");
                   } finally {
                     setBusy(false);
                   }
@@ -140,12 +168,12 @@ export default function Auth({
             </div>
           ) : (
             <form onSubmit={submit} className="auth-form">
-              {(status.needsSetup || joining) && (
+              {signingUp && (
                 <label>
-                  Name
+                  Your name
                   <input
                     name="name"
-                    placeholder="Your name"
+                    placeholder="How should we address you?"
                     required
                     autoComplete="name"
                   />
@@ -166,32 +194,20 @@ export default function Auth({
                 <input
                   name="password"
                   type="password"
-                  minLength={status.needsSetup || joining ? 12 : undefined}
-                  placeholder={
-                    status.needsSetup || joining
-                      ? "At least 12 characters"
-                      : "Enter your password"
-                  }
+                  minLength={signingUp ? 12 : undefined}
+                  placeholder={signingUp ? "Create a password (12+ characters)" : "Enter your password"}
                   required
-                  autoComplete={
-                    status.needsSetup || joining
-                      ? "new-password"
-                      : "current-password"
-                  }
+                  autoComplete={signingUp ? "new-password" : "current-password"}
                 />
               </label>
-              {error && (
-                <div className="form-error" role="alert">
-                  {error}
-                </div>
-              )}
+              {error && <div className="form-error" role="alert">{error}</div>}
               <button className="button primary wide" disabled={busy}>
                 {busy
                   ? "Please wait…"
                   : joining
                     ? "Create team account"
-                    : status.needsSetup
-                      ? "Create workspace"
+                    : signingUp
+                      ? "Create free account"
                       : "Sign in"}{" "}
                 <ArrowRight size={16} />
               </button>
@@ -199,21 +215,21 @@ export default function Auth({
           )}
           {status.previewEnabled && !joining && (
             <>
-              <div className="auth-divider">
-                <span>OR</span>
-              </div>
-              <button
-                className="button secondary wide"
-                onClick={openPreview}
-                disabled={busy}
-              >
+              <div className="auth-divider"><span>OR</span></div>
+              <button className="button secondary wide" onClick={openPreview} disabled={busy}>
                 Open sandbox preview <ArrowRight size={16} />
               </button>
               <p className="preview-warning">
-                Preview access is not private. Use a normal deployment for
-                personal data.
+                Preview access is not private. Use a normal deployment for personal data.
               </p>
             </>
+          )}
+          {!joining && !status.needsSetup && (
+            <p className="auth-legal">
+              {signingUp
+                ? <>Already have an account? <button type="button" onClick={() => changeMode("signin")}>Sign in</button></>
+                : <>New to Momentum? <button type="button" onClick={() => changeMode("signup")}>Create an account</button></>}
+            </p>
           )}
           <div className="auth-foot">
             <ShieldCheck size={15} /> Your workspace, thoughtfully protected.
