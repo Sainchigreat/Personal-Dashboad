@@ -51,7 +51,25 @@ describe("additive PostgreSQL goal-hierarchy migration", () => {
       `select count(*)::int as count from information_schema.tables
        where table_schema='momentum_os' and table_type='BASE TABLE'`,
     );
-    expect(original.rows[0].count).toBeGreaterThanOrEqual(32);
+    // 29 base compat tables + 3 goal tables + 2 speaker tables = 34.
+    expect(original.rows[0].count).toBeGreaterThanOrEqual(34);
+
+    // Speaker register and onboarding columns are additive.
+    const speakerTables = await pg.query<{ table_name: string }>(
+      `select table_name from information_schema.tables
+       where table_schema='momentum_os'
+         and table_name in ('speakers','speaker_followups')`,
+    );
+    expect(speakerTables.rows.map((r) => r.table_name).sort()).toEqual([
+      "speaker_followups",
+      "speakers",
+    ]);
+    const onboarding = await pg.query<{ column_name: string }>(
+      `select column_name from information_schema.columns
+       where table_schema='momentum_os' and table_name='settings'
+         and column_name in ('onboarding_completed','onboarding_profile')`,
+    );
+    expect(onboarding.rows).toHaveLength(2);
 
     // Foreign keys are enforced across the hierarchy.
     const fks = await pg.query<{ count: number }>(

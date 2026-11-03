@@ -307,6 +307,101 @@ describe("additive goal hierarchy", () => {
     expect(await countFor("monthly_goals", ownerA)).toBe(2);
   });
 
+  it("starts new accounts with onboarding pending and no owner-specific seed", async () => {
+    for (const owner of [ownerA, ownerB, ownerC]) {
+      const settings = (await db
+        .prepare(
+          "SELECT onboarding_completed, onboarding_profile, timezone FROM settings WHERE user_id=?",
+        )
+        .get(owner)) as {
+        onboarding_completed: number;
+        onboarding_profile: string;
+        timezone: string;
+      };
+      expect(settings.onboarding_completed).toBe(0);
+      expect(settings.onboarding_profile).toBe("{}");
+      expect(settings.timezone).toBe("Africa/Lagos");
+    }
+  });
+
+  it("completes onboarding for one account without changing another", async () => {
+    const save = await request("PATCH", "/settings", {
+      timezone: "Africa/Lagos",
+      work_start: "09:00",
+      work_end: "18:00",
+      onboarding_completed: 1,
+      onboarding_profile: JSON.stringify({
+        role: "business",
+        useCase: "Launch a course",
+        workingDays: "1,2,3,4,5",
+        focusAreas: ["Course growth"],
+        configuredAt: "2026-11-02T00:00:00.000Z",
+      }),
+    });
+    expect(save.status).toBe(200);
+    const mine = (await db
+      .prepare("SELECT onboarding_completed, onboarding_profile FROM settings WHERE user_id=?")
+      .get(ownerA)) as { onboarding_completed: number; onboarding_profile: string };
+    expect(mine.onboarding_completed).toBe(1);
+    expect(JSON.parse(mine.onboarding_profile).role).toBe("business");
+
+    const other = (await db
+      .prepare("SELECT onboarding_completed FROM settings WHERE user_id=?")
+      .get(ownerB)) as { onboarding_completed: number };
+    expect(other.onboarding_completed).toBe(0);
+
+    // Reopen from Settings (skippable and returnable).
+    const reopen = await request("PATCH", "/settings", { onboarding_completed: 0 });
+    expect(reopen.status).toBe(200);
+    const reopened = (await db
+      .prepare("SELECT onboarding_completed FROM settings WHERE user_id=?")
+      .get(ownerA)) as { onboarding_completed: number };
+    expect(reopened.onboarding_completed).toBe(0);
+  });
+
+  it("keeps the Next Chapter speaker register owner-scoped and separate from course partners", async () => {
+    const created = await request("POST", "/speakers", {
+      name: "Guest Speaker",
+      topic: "Designing with AI",
+      invitation_status: "invited",
+      confirmation_status: "pending",
+    });
+    expect(created.status).toBe(201);
+    const speakerId = created.body.id as string;
+
+    const followup = await request("POST", "/speaker_followups", {
+      speaker_id: speakerId,
+      occurred_date: "2026-11-02",
+      channel: "email",
+      summary: "Invitation sent; awaiting response.",
+    });
+    expect(followup.status).toBe(201);
+
+    const bootstrapB = await request("GET", "/bootstrap", undefined, authB());
+    expect(bootstrapB.body.speakers).toHaveLength(0);
+    expect(bootstrapB.body.speaker_followups).toHaveLength(0);
+
+    const cross = await request(
+      "PATCH",
+      `/speakers/${speakerId}`,
+      { name: "stolen" },
+      authB(),
+    );
+    expect(cross.status).toBe(404);
+
+    const mine = await request("GET", "/bootstrap");
+    expect(mine.body.speakers).toHaveLength(1);
+    expect(mine.body.speaker_followups).toHaveLength(1);
+
+    // Promotional partners remain a Course Growth daily-routine concept, not
+    // speaker records: no speaker was auto-created from the November routine.
+    expect(
+      mine.body.speakers.every(
+        (speaker: { name: string }) => !speaker.name.toLowerCase().includes("promotional partner"),
+      ),
+    ).toBe(true);
+  });
+
   it("refuses to run without a verified owner id", () => {
     let failed = false;
     try {

@@ -31,6 +31,7 @@ export const TABLES = [
   "team_comments", "team_activity", "integration_checks",
   // Additive goal hierarchy (20261102000500_goal_hierarchy.sql)
   "monthly_goals", "weekly_goals", "goal_links",
+  "speakers", "speaker_followups",
 ] as const;
 
 const TABLE_PATTERN = new RegExp(`\\b(${TABLES.join("|")})\\b`, "g");

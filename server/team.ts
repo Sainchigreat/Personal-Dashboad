@@ -361,6 +361,68 @@ router.patch("/members/:userId", requireManager, async (req, res, next) => {
   }
 });
 
+// Remove a member from the workspace. The account itself is preserved; only
+// its membership and active sessions are revoked. The owner cannot be removed.
+router.delete("/members/:userId", requireManager, async (req, res, next) => {
+  try {
+    const m = member(res);
+    const target = await db
+      .prepare(
+        "SELECT user_id,role,status FROM team_members WHERE workspace_id=? AND user_id=?",
+      )
+      .get(m.workspace_id, req.params.userId) as
+      { user_id: string; role: Role; status: string } | undefined;
+    if (!target) return res.status(404).json({ error: "Member not found." });
+    if (target.role === "owner")
+      return res.status(403).json({ error: "The workspace owner cannot be removed." });
+    if (target.user_id === m.user_id)
+      return res.status(403).json({ error: "Use Leave team to remove yourself." });
+    if (m.role !== "owner" && target.role === "manager")
+      return res
+        .status(403)
+        .json({ error: "Only the owner can remove a manager." });
+    await transaction(async () => {
+      await activity(
+        m,
+        m.user_id,
+        "removed",
+        "member",
+        target.user_id,
+        "Removed a member from the team",
+      );
+      await db
+        .prepare("DELETE FROM team_members WHERE workspace_id=? AND user_id=?")
+        .run(m.workspace_id, target.user_id);
+      await db
+        .prepare("DELETE FROM auth_sessions WHERE user_id=?")
+        .run(target.user_id);
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// A member may leave a team they do not own. Explicit action, never automatic.
+router.post("/leave", async (req, res, next) => {
+  try {
+    const m = member(res);
+    if (m.role === "owner")
+      return res.status(403).json({
+        error: "The owner cannot leave their own workspace. Remove other members or delete your account instead.",
+      });
+    await transaction(async () => {
+      await activity(m, m.user_id, "left", "member", m.user_id, "Left the team");
+      await db
+        .prepare("DELETE FROM team_members WHERE workspace_id=? AND user_id=?")
+        .run(m.workspace_id, m.user_id);
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 const goalFields = {
   title: short,
   description: notes.default(""),

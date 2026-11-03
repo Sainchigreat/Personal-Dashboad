@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS settings (
   notifications_enabled INTEGER NOT NULL DEFAULT 1,
   auto_plan INTEGER NOT NULL DEFAULT 1,
   daily_templates TEXT NOT NULL DEFAULT '[]',
+  onboarding_completed INTEGER NOT NULL DEFAULT 0,
+  onboarding_profile TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -400,6 +402,7 @@ CREATE TABLE IF NOT EXISTS weekly_goals (
   outcome TEXT NOT NULL,
   target REAL NOT NULL DEFAULT 0,
   unit TEXT NOT NULL DEFAULT '',
+  current REAL NOT NULL DEFAULT 0,
   source TEXT NOT NULL DEFAULT 'manual',
   owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   assignee_id TEXT REFERENCES users(id) ON DELETE SET NULL,
@@ -426,3 +429,47 @@ CREATE INDEX IF NOT EXISTS idx_weekly_goals_parent ON weekly_goals(monthly_goal_
 CREATE INDEX IF NOT EXISTS idx_weekly_goals_week ON weekly_goals(user_id,week_start,week_end);
 CREATE INDEX IF NOT EXISTS idx_weekly_goals_assignee ON weekly_goals(assignee_id,status);
 CREATE INDEX IF NOT EXISTS idx_goal_links_monthly ON goal_links(monthly_goal_id);
+
+-- ---------------------------------------------------------------------------
+-- Next Chapter speaker / partner register (additive, 2026-11-02).
+-- Deliberately separate from the Graphic Design with AI promotional-partner
+-- workflow, which lives in the daily routine / Course Growth.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS speakers (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  workspace_id TEXT NOT NULL DEFAULT 'personal',
+  session_id TEXT REFERENCES chapter_sessions(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  organisation TEXT NOT NULL DEFAULT '',
+  biography TEXT NOT NULL DEFAULT '',
+  topic TEXT NOT NULL DEFAULT '',
+  invitation_status TEXT NOT NULL DEFAULT 'not_invited',
+  confirmation_status TEXT NOT NULL DEFAULT 'pending',
+  agreed_date TEXT,
+  alternative_dates TEXT NOT NULL DEFAULT '',
+  reminder_dates TEXT NOT NULL DEFAULT '',
+  asset_requirements TEXT NOT NULL DEFAULT '',
+  bio_photo_received INTEGER NOT NULL DEFAULT 0,
+  flyer_approved INTEGER NOT NULL DEFAULT 0,
+  owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS speaker_followups (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  speaker_id TEXT NOT NULL REFERENCES speakers(id) ON DELETE CASCADE,
+  occurred_date TEXT NOT NULL,
+  channel TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_speakers_user_status ON speakers(user_id,invitation_status);
+CREATE INDEX IF NOT EXISTS idx_speakers_session ON speakers(session_id);
+CREATE INDEX IF NOT EXISTS idx_speakers_owner ON speakers(owner_id);
+CREATE INDEX IF NOT EXISTS idx_speaker_followups_speaker ON speaker_followups(speaker_id,occurred_date);

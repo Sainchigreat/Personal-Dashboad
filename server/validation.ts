@@ -338,6 +338,7 @@ export const configs = {
       outcome: short,
       target: nonnegative,
       unit: short,
+      current: nonnegative,
       source: z.enum([
         "manual",
         "tasks",
@@ -362,6 +363,45 @@ export const configs = {
       monthly_goal_id: z.string().uuid(),
     },
     ["weekly_goal_id", "monthly_goal_id"],
+  ),
+  speakers: resource(
+    {
+      workspace_id: short,
+      session_id: optionalId,
+      name: short,
+      email: z.string().trim().max(254),
+      phone: short,
+      organisation: short,
+      biography: long,
+      topic: short,
+      invitation_status: z.enum([
+        "not_invited",
+        "invited",
+        "awaiting_response",
+        "confirmed",
+        "declined",
+        "completed",
+      ]),
+      confirmation_status: z.enum(["pending", "confirmed", "declined"]),
+      agreed_date: dateValue,
+      alternative_dates: long,
+      reminder_dates: long,
+      asset_requirements: long,
+      bio_photo_received: flag,
+      flyer_approved: flag,
+      owner_id: optionalId,
+      notes: long,
+    },
+    ["name"],
+  ),
+  speaker_followups: resource(
+    {
+      speaker_id: z.string().uuid(),
+      occurred_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      channel: short,
+      summary: long,
+    },
+    ["speaker_id", "occurred_date"],
   ),
 } as const;
 
@@ -392,6 +432,8 @@ export const settingsSchema = z
         "Add at least one platform.",
       ),
     notifications_enabled: flag,
+    onboarding_completed: flag,
+    onboarding_profile: z.string().trim().max(4000),
     auto_plan: flag,
     daily_templates: z
       .string()
@@ -430,4 +472,5 @@ export const foreignKeys: Record<string, string> = {
   prospect_id: "prospects",
   weekly_goal_id: "weekly_goals",
   monthly_goal_id: "monthly_goals",
+  speaker_id: "speakers",
 };

@@ -23,6 +23,7 @@ import {
   Sparkles,
   UsersRound,
   Target,
+  Mic2,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -39,7 +40,7 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { page: "command", label: "Command Centre", icon: LayoutGrid },
       { page: "day", label: "My Day", icon: CheckSquare2 },
-      { page: "goals", label: "Weekly Goals", icon: Target },
+      { page: "goals", label: "Goals", icon: Target },
       { page: "review", label: "Weekly Review", icon: BarChart3 },
     ],
   },
@@ -49,6 +50,7 @@ const groups: Array<{ title: string; items: NavItem[] }> = [
       { page: "course", label: "Course Growth", icon: CircleDollarSign },
       { page: "studio", label: "Creative Studio", icon: Clapperboard },
       { page: "chapter", label: "Next Chapter", icon: Radio },
+      { page: "speakers", label: "Speaker Register", icon: Mic2 },
       { page: "brand", label: "Personal Brand", icon: PenLine },
       { page: "pipeline", label: "Client Pipeline", icon: BriefcaseBusiness },
     ],
@@ -133,6 +135,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const selectedPage = allNav.find((item) => item.page === page);
   const initials =
     data.settings.name
@@ -230,19 +233,55 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <X size={18} />
           </button>
         </div>
-        <button
-          className="workspace-label"
-          onClick={() => navigate("settings")}
-        >
-          <span className="workspace-icon">
-            <Sparkles size={14} />
-          </span>
-          <span>
-            <strong>My workspace</strong>
-            <small>Personal</small>
-          </span>
-          <ChevronRight size={14} />
-        </button>
+        <div className="workspace-switcher">
+          <button
+            className="workspace-label"
+            aria-expanded={workspaceOpen}
+            aria-label="Switch workspace"
+            onClick={() => setWorkspaceOpen((value) => !value)}
+          >
+            <span className="workspace-icon">
+              {page === "team" ? <UsersRound size={14} /> : <Sparkles size={14} />}
+            </span>
+            <span>
+              <strong>{page === "team" ? "Team workspace" : "My workspace"}</strong>
+              <small>{page === "team" ? "Shared" : "Personal"}</small>
+            </span>
+            <ChevronDown size={14} />
+          </button>
+          {workspaceOpen && (
+            <div className="workspace-menu" role="menu">
+              <button
+                role="menuitem"
+                className={page !== "team" ? "active" : ""}
+                onClick={() => {
+                  navigate("command");
+                  setWorkspaceOpen(false);
+                }}
+              >
+                <Sparkles size={14} />
+                <span>
+                  <strong>Personal</strong>
+                  <small>Private goals, tasks and records</small>
+                </span>
+              </button>
+              <button
+                role="menuitem"
+                className={page === "team" ? "active" : ""}
+                onClick={() => {
+                  navigate("team");
+                  setWorkspaceOpen(false);
+                }}
+              >
+                <UsersRound size={14} />
+                <span>
+                  <strong>Team workspace</strong>
+                  <small>Shared goals, roster and assignments</small>
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
         <nav className="sidebar-nav" aria-label="Main navigation">
           {groups.map((group) => (
             <div className="nav-group" key={group.title}>

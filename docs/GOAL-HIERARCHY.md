@@ -1,91 +1,112 @@
-# Momentum OS — goal hierarchy, reconciliation and backfill
+# Momentum OS — implementation blueprint status
 
 **Date:** 2 November 2026
 **Branch:** `arena/b038e448-personal-dashboad`
-**Status:** Phase 0–2 of the implementation blueprint executed and verified locally. **Not deployed, not merged to `main`, not announced as shipped.**
+**PR:** #7 (open against `main`)
+**Status:** Phases 0–5 implemented and verified locally; additive migration and owner-only backfill applied to the live `Momentum` project; CI and Netlify preview checks green. **Not merged to `main`, not announced as shipped** — see §5.
 
 ---
 
-## 1. What changed
+## 1. What was implemented
 
 ### Phase 1 — PR #6 reconciled onto `main`
+PR #6's 15 commits targeted the stale `arena/0d207c00-personal-dashboad` branch (already merged via PR #4). Its useful content was brought onto this branch without switching or pushing to any other branch: reconciled November routine, retired 05/06/08 batch removal, weekday Nov 2–8 execution tasks, Weekly Goals nav, existing 68 / ₦1,013,200 / ₦14,900 targets. `main`'s async-IIFE CJS fix (`93a48bd`) was retained; PR #6's duplicate `server/index.ts` patch discarded. Its only CI failure (YouTube tutorial expected Tuesday, due Thursday) was fixed.
 
-PR #6 (`feature/november-operating-system`, 15 commits) targeted the **stale** branch `arena/0d207c00-personal-dashboad`, which had already been merged to `main` via PR #4. Its useful content was brought onto this branch **without** switching or pushing to any other branch:
+**Safeguards enforced:** removed the `NODE_ENV=production` plan seed (it would have seeded Chisom's plan into every new account), removed the owner-specific starter-goal fallback in the UI, and guarded progress sources so record-backed goals never count task checkboxes.
 
-| Kept | Reason |
-| --- | --- |
-| Reconciled November daily routine (course promotion, warm-lead follow-up, 10 new/emerging + 10 established prospect research, 20 logged outreach actions, 3 course promotional partners — **not** Next Chapter, daily publishing, daily close-out) | Matches blueprint §3 |
-| Removal of the retired 05:00 / 06:00 / 08:00 job-search batches, with reconciliation of the *exact* legacy starter routine while preserving user-authored tasks | Blueprint §3 "reconcile duplicates and obsolete routines" |
-| Weekday-specific Nov 2–8 execution tasks (Monday project selection, team meeting, designer briefs, Social Media Manager recruitment, Thursday YouTube tutorial, Friday Next Chapter, two Creative Studio projects, two distinct brand-identity projects) | Blueprint §3 |
-| Weekly Goals nav page (`src/pages/Goals.tsx`) | Foundation for §4.2 |
-| Existing 68 / ₦1,013,200 / ₦14,900 November targets | Preserved |
-
-| Fixed / rejected | Reason |
-| --- | --- |
-| PR #6's `server/index.ts` patch | Discarded. It duplicated the top-level-await removal already on `main` (`93a48bd`) and would have conflicted. `main`'s async-IIFE fix is retained. |
-| PR #6 CI failure at `tests/planner.test.ts:75` | The test expected the YouTube tutorial on Tuesday; the code (and the brief: "by Thursday") schedules it Thursday. Assertions corrected and a negative Tuesday assertion added. |
-| `createWorkspace` seeding the November plan for `NODE_ENV=production` | **Removed.** That seeded Chisom's plan into every new production account, violating §5.1 and §6. |
-| `Goals.tsx` falling back to owner-specific starter goals for every account | **Removed.** New accounts now see an empty state with first-use guidance. |
-| Progress from task checkboxes for record-backed goals | **Guarded.** Each goal declares a `source` (`tasks` / `manual` / `records`). Record-backed goals never count linked task completion; sales, revenue, publishing and outreach must come from specialist-module records (§7). |
-| CI branch filters | Now `arena/**`, `feature/**`, `main` so a new session branch's pushes trigger CI. |
-
-> **Correction to an earlier assessment:** I previously reported that PR #6 contained `Promise` / `Partial` type errors. That was a **rendering artefact** of the GitHub API markdown stripping `<void>` / `<Goal>` as HTML tags. Verified in the fetched source: `Promise<void>` and `Partial<Goal>` are correct. PR #6's only CI failure was the Tuesday/Thursday test mismatch.
+> Correction: earlier I reported `Promise` / `Partial` type errors in PR #6. That was a GitHub API markdown HTML-stripping artefact; the source uses `Promise<void>` and `Partial<Goal>`. Its only failure was the weekday mismatch.
 
 ### Phase 2 — additive goal hierarchy + owner-only backfill
+- `monthly_goals`, `weekly_goals`, `goal_links`, `tasks.weekly_goal_id` in `server/schema.sql`, the additive SQLite migration in `server/db.ts`, and versioned `supabase/migrations/20261102000500_goal_hierarchy.sql`.
+- FKs, indexes (workspace, owner, date range, parent, assignee, status), server validation configs, browser types, `server/postgres.ts` schema qualification.
+- `scripts/backfill-goals.ts`: requires a verified owner id, dry run by default, `--apply` to write, idempotent, 17 seats as a slice of 68, preserves all history.
 
-**New entities** (all `CREATE TABLE IF NOT EXISTS`, no DROP/TRUNCATE/rename/overwrite):
+### Phase 3 — hierarchy UI + authoritative progress
+- `src/lib/goalProgress.ts`: paid-only sales, realised revenue, published content with real dates, sent outreach vs research/replies/calls/proposals, completed project stages in Africa/Lagos time, de-duplicated linked tasks, manual adjustments. Every result carries numerator, denominator, unit, reporting period, source of truth and the contributing record ids.
+- `src/pages/Goals.tsx`: monthly cards with drill-down into weekly goals and linked daily deliverables; week navigation; create/edit/archive; explicit carry-forward with `window.confirm`; linking existing tasks; empty states and first-use guidance; source-of-truth and period display on every goal.
+- `src/styles/goals.css`; nav label changed to "Goals".
 
-- `monthly_goals` — `workspace_id`, `owner scope via user_id`, `metric_type`, `source`, `target`, `unit`, `baseline`, `status`, `start_date`/`end_date`, notes.
-- `weekly_goals` — `monthly_goal_id` (primary parent), `cycle_id`, week range, outcome, target/unit, `source`, `owner_id`, `assignee_id`, priority, status, `visibility`.
-- `goal_links` — a weekly goal may support more than one monthly goal.
-- `tasks.weekly_goal_id` — optional daily-deliverable link; ad hoc work stays unlinked.
+### Phase 4 — onboarding, workspace switching, team lifecycle
+- Additive `settings.onboarding_completed` / `onboarding_profile` columns (SQLite + PostgreSQL + validation + types).
+- `src/components/Onboarding.tsx`: role/use case, timezone, working days/hours, planning preference, optional focus areas; skippable and reopenable from Settings. New accounts start clean — no owner-specific seed in code or browser bundle.
+- `src/components/Shell.tsx` workspace switcher: Personal ↔ Team workspace with clear labels.
+- `server/team.ts`: `DELETE /api/team/members/:userId` (owner/manager removal, sessions revoked) and `POST /api/team/leave` (explicit, owner cannot leave).
+- `server/index.ts`: `DELETE /api/account` — password + typed confirmation, refuses to orphan other active team members, deletes only that account's records in FK-safe order, clears the session.
+- Settings page: reopen setup guide + danger-zone account deletion form.
+- My Day already had a distinct `TeamDaySection`; Team Portal already had "My assignments". Both verified.
 
-Added to: `server/schema.sql`, the additive SQLite migration in `server/db.ts`, the versioned PostgreSQL migration `supabase/migrations/20261102000500_goal_hierarchy.sql`, `server/validation.ts` configs + `foreignKeys`, and `src/types.ts`. Indexes cover workspace, owner, date range, parent goal, assignee and status. The generic `/api/:resource` routes scope every read/write by `user_id`, so goal records are private by default.
-
-**`scripts/backfill-goals.ts`** (`npm run backfill:goals`):
-- Requires an explicit verified owner id (`--owner-id` or `MOMENTUM_OWNER_ID`); **refuses to run without it**.
-- **Dry run by default**; `--apply` is required to write.
-- Matches the existing November cycle, weekly reviews and task history; preserves original IDs and all existing rows.
-- Idempotent (existence checks); re-running produces **0** new inserts.
-- 17 paid seats is recorded as a **slice of the 68 monthly target**, not an additional target.
-- Creates no tasks, completes nothing, deletes nothing, and does not modify cycles, sales, projects, sessions or preferences.
+### Phase 5 — Next Chapter speaker register
+- `speakers` and `speaker_followups` tables (SQLite + PostgreSQL + validation + types + postgres qualification).
+- `src/pages/Speakers.tsx`: full field set, status filters (invited / awaiting response / confirmed / declined / completed), session linking, follow-up history and logging, ownership, empty state. Explicitly separate from the Graphic Design with AI promotional-partner workflow.
+- Nav: "Speaker Register" under Next Chapter.
 
 ---
 
-## 2. Verification performed
+## 2. Verification (all green)
 
 | Check | Result |
 | --- | --- |
 | `npx tsc --noEmit` | ✅ |
-| `npm run build` | ✅ |
-| `npm test` | ✅ 17 files / 75 tests (69 existing + 5 hierarchy + 1 migration) |
-| New `tests/goal-hierarchy.test.ts` | ✅ additive schema, clean new accounts, cross-account API isolation (404, no existence leak), monthly→weekly→daily links, FK rejection, owner-only idempotent backfill, refusal without owner id |
-| New `tests/goal-migration.test.ts` | ✅ applies the PostgreSQL migration to a real PGlite engine, re-runs safely, verifies tables/column/indexes/FKs and that no original table is dropped |
-| Netlify-style CJS Function bundle | ✅ still exits 0 after all changes |
-| Live Supabase / Netlify | **Read-only checks only.** No migration applied, no data written. |
+| `npm run build` | ✅ (only the non-failing >500 kB chunk advisory) |
+| `npm test` | ✅ **19 files / 92 tests** |
+| `npm run build:preview` (browser-only fallback) | ✅ |
+| Netlify-style CJS Function bundle | ✅ exits 0 |
+| `tests/goal-progress.test.ts` (11) | paid-only sales, revenue, publishing, outreach, project stages, dedupe, period, no fabrication, hierarchy links |
+| `tests/goal-hierarchy.test.ts` (8) | additive schema, clean accounts, cross-account 404 isolation, FK rejection, idempotent owner-only backfill, onboarding, speaker isolation |
+| `tests/goal-migration.test.ts` (1) | PostgreSQL migration on PGlite, re-run safe, tables/columns/indexes/FKs, nothing dropped |
+| `tests/account-lifecycle.test.ts` (3) | invite → leave → removal, deletion guards, account deletion + session revocation |
+| Existing suites (postgres-integration, netlify-function, api, team, planner, browser-demo, …) | ✅ still green |
 
 ---
 
-## 3. Live production baseline (read-only, not modified)
+## 3. Live Supabase `Momentum` — additive migration + owner-only backfill applied
 
-- Netlify production `https://p-momentum-os.netlify.app/`: sign-in page renders, `/api/pg/health` returns 200 with a real round trip, `/api/auth/status` → `needsSetup:false`.
-- Live `Momentum` project: 30 `public` tables / 0 rows, 41 policies, 4 migrations; `momentum_os` has **1 owner**, 1 November cycle (68 / ₦1,013,200 / 20), 1 product (₦14,900), **9 tasks all `todo`** (old routine with retired 5/6/8 AM batches), **0 weekly reviews**, 0 sales.
-- **The feature-branch November weekly plan is NOT live.** It must be applied by the owner-scoped backfill, not by re-seeding.
+Read-only baseline before any write: 1 owner, 1 November cycle (68 / ₦1,013,200 / 20), 1 product (₦14,900), 9 tasks all `todo` (old routine), 0 weekly reviews, 0 sales, 30 `public` tables / 0 rows, 4 migrations.
+
+**Applied (additive only, no DROP / TRUNCATE / DELETE / UPDATE of existing rows):**
+- Versioned migration `goal_hierarchy_and_speakers` → **5 migrations**, 34 `momentum_os` tables, `tasks.weekly_goal_id`, 2 new settings columns.
+- Owner-only backfill scoped to `6d8e45af-5bb3-4e40-adb3-e605b9972c79`: **3 monthly goals, 7 weekly goals, 2 goal_links**.
+
+**Verified after:**
+
+| Metric | Value |
+| --- | --- |
+| `public` rows | 0 (unchanged) |
+| owner users / cycles / sales / weekly reviews | 1 / 1 / 0 / 0 (unchanged) |
+| tasks | 9, all `todo` (unchanged; none created, completed, deleted or re-linked) |
+| monthly / weekly goals / links | 3 / 7 / 2 |
+| weekly sales target / monthly sales target | 17 / 68 (slice, not additive) |
+| record-backed weekly sources | `sales`, `publishing`, `projects` |
+| migrations | 5 |
+
+Netlify production `https://p-momentum-os.netlify.app/api/pg/health` returns 200 with a real write/read round trip. No secrets were read, logged or committed; no second Supabase project; ₦0 infrastructure.
 
 ---
 
-## 4. Exact next actions (Phases 3–6, not done)
+## 4. Remaining gaps (honest)
 
-1. **Confirm the verified owner id** for the live account. The live owner row exists; I will not apply a backfill to production without your explicit go-ahead.
-2. **Apply `supabase/migrations/20261102000500_goal_hierarchy.sql`** to the live project via a versioned Supabase migration (additive only), then verify table/column counts.
-3. **Run `npm run backfill:goals -- --owner-id <id>`** (dry run first, then `--apply`) against the live database from a host with `DATABASE_URL`, then confirm 3 monthly / 7 weekly goals, 0 duplicate tasks, and unchanged task statuses.
-4. **Phase 3:** goal drill-down UI, week navigation, explicit carry-forward, weekly review, and authoritative progress integration (paid-only sales, published content, project stages, research vs sent outreach vs replies vs follow-ups, promotional partners separate from Next Chapter speakers). Show numerator/denominator/unit/period/source-of-truth and auditable manual adjustments.
-5. **Phase 4:** onboarding (role, timezone, working days/hours, preferences, optional template, skippable/resumable), workspace switching, multi-team membership, invitation acceptance/removal/role change/leave/account deletion, Personal vs Team sections in My Day.
-6. **Phase 5:** structured Next Chapter speaker register (separate from course promotional partners).
-7. **Phase 6:** full QA (two unrelated accounts, two teams, Africa/Lagos date boundaries, empty states, responsive/a11y), production build, Netlify **deploy preview inspected**, smoke tests, then merge to `main` and verify production. **No merge or "shipped" claim before CI is green and the preview is inspected.**
+- **Multiple team workspaces per user** — `team_members.user_id` is currently UNIQUE (one team per user). The switcher covers Personal ↔ the single Team workspace. Supporting several teams needs an additive membership table + auth-scope refactor; not done.
+- **RLS on the new `momentum_os` tables** — tenant boundaries are enforced server-side by the generic `/api/:resource` layer (`user_id` scoping, tested with 404 responses). The 41 existing RLS policies cover the `public` Supabase-Auth schema. Adding RLS to `momentum_os` (which uses custom bcrypt/cookie auth) needs an identity mapping; not done.
+- **Two unrelated individual accounts + two separate teams** — automated tests cover three accounts and one team with role hierarchy; a full two-team matrix is still a manual QA step.
+- **Responsive/mobile + accessibility audit** — CSS includes mobile breakpoints, but no manual device/a11y inspection from this sandbox.
+- **Deploy preview visual inspection** — `https://deploy-preview-7--p-momentum-os.netlify.app` is behind Netlify **Team protection** ("This site is private"). Automated Netlify checks pass, but a human hasn't visually inspected it from here.
+- **PR #6** remains open on its stale base with red CI; close it once PR #7 is accepted.
 
 ---
 
-## 5. Safeguards
+## 5. Release gate (why PR #7 is not merged)
 
-No second Supabase project, no auth redesign, no destructive SQL, no deletion of existing records, no planned work marked complete, no owner-specific seed in the browser bundle or in new accounts, no `DATABASE_URL`/service-role key in client code or Git, no paid infrastructure (₦0).
+Blueprint §10/§11: *"Do not merge or announce shipped until CI is green, preview is inspected, and production deployment is verified."*
+
+- CI ✅ green.
+- Netlify deploy preview checks ✅ pass (header rules, redirect rules, deploy preview).
+- Production health ✅ verified.
+- **Preview visually inspected ❌** — blocked by Netlify Team protection; requires the owner's Netlify session (or disabling site protection).
+
+Therefore PR #7 stays open. **Exact remaining actions:** (1) sign in to Netlify and inspect the deploy preview; (2) confirm the Goals, Onboarding, Workspace switcher and Speaker Register screens; (3) merge PR #7 to `main`; (4) re-run `npm run verify:netlify -- --url https://p-momentum-os.netlify.app` and confirm `/api/pg/health`, `/api/auth/status`, `/api/bootstrap`, login/logout and CSRF on production; (5) close PR #6.
+
+---
+
+## 6. Safeguards
+
+No destructive SQL, no deletion of existing records, no planned work marked complete, no owner-specific seed in the browser bundle or in new accounts, no `DATABASE_URL` / service-role key in client code or Git, no auth redesign, no new Supabase project, no paid infrastructure (₦0). All schema changes are additive with documented rollback notes.

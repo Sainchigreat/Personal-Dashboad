@@ -43,6 +43,7 @@ create table if not exists momentum_os.weekly_goals (
   outcome text NOT NULL,
   target double precision NOT NULL DEFAULT 0,
   unit text NOT NULL DEFAULT '',
+  current double precision NOT NULL DEFAULT 0,
   source text NOT NULL DEFAULT 'manual',
   owner_id text REFERENCES momentum_os.users(id) ON DELETE SET NULL,
   assignee_id text REFERENCES momentum_os.users(id) ON DELETE SET NULL,
@@ -85,3 +86,50 @@ create unique index if not exists uq_weekly_goals_owner_week_outcome
   on momentum_os.weekly_goals(user_id,week_start,outcome);
 create unique index if not exists uq_monthly_goals_owner_title_period
   on momentum_os.monthly_goals(user_id,title,coalesce(start_date,''));
+
+-- Onboarding state (additive, safe defaults, no existing preference changed).
+alter table momentum_os.settings
+  add column if not exists onboarding_completed integer NOT NULL DEFAULT 0;
+alter table momentum_os.settings
+  add column if not exists onboarding_profile text NOT NULL DEFAULT '{}';
+
+-- Next Chapter speaker register (additive). Kept separate from the course
+-- promotional-partner workflow in the daily routine.
+create table if not exists momentum_os.speakers (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES momentum_os.users(id) ON DELETE CASCADE,
+  workspace_id text NOT NULL DEFAULT 'personal',
+  session_id text REFERENCES momentum_os.chapter_sessions(id) ON DELETE SET NULL,
+  name text NOT NULL,
+  email text NOT NULL DEFAULT '',
+  phone text NOT NULL DEFAULT '',
+  organisation text NOT NULL DEFAULT '',
+  biography text NOT NULL DEFAULT '',
+  topic text NOT NULL DEFAULT '',
+  invitation_status text NOT NULL DEFAULT 'not_invited',
+  confirmation_status text NOT NULL DEFAULT 'pending',
+  agreed_date text,
+  alternative_dates text NOT NULL DEFAULT '',
+  reminder_dates text NOT NULL DEFAULT '',
+  asset_requirements text NOT NULL DEFAULT '',
+  bio_photo_received integer NOT NULL DEFAULT 0,
+  flyer_approved integer NOT NULL DEFAULT 0,
+  owner_id text REFERENCES momentum_os.users(id) ON DELETE SET NULL,
+  notes text NOT NULL DEFAULT '',
+  created_at text NOT NULL,
+  updated_at text NOT NULL
+);
+create table if not exists momentum_os.speaker_followups (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES momentum_os.users(id) ON DELETE CASCADE,
+  speaker_id text NOT NULL REFERENCES momentum_os.speakers(id) ON DELETE CASCADE,
+  occurred_date text NOT NULL,
+  channel text NOT NULL DEFAULT '',
+  summary text NOT NULL DEFAULT '',
+  created_at text NOT NULL,
+  updated_at text NOT NULL
+);
+create index if not exists idx_speakers_user_status on momentum_os.speakers(user_id,invitation_status);
+create index if not exists idx_speakers_session on momentum_os.speakers(session_id);
+create index if not exists idx_speakers_owner on momentum_os.speakers(owner_id);
+create index if not exists idx_speaker_followups_speaker on momentum_os.speaker_followups(speaker_id,occurred_date);

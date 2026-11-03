@@ -8,6 +8,7 @@ export type Page =
   | "pipeline"
   | "review"
   | "goals"
+  | "speakers"
   | "team"
   | "cloud"
   | "settings";
@@ -45,6 +46,8 @@ export interface Settings extends Base {
   notifications_enabled: number;
   auto_plan: number;
   daily_templates: string;
+  onboarding_completed: number;
+  onboarding_profile: string;
 }
 export interface Cycle extends Base {
   month: string;
@@ -247,6 +250,7 @@ export interface WeeklyGoal extends Base {
   outcome: string;
   target: number;
   unit: string;
+  current: number;
   source:
     | "manual"
     | "tasks"
@@ -265,6 +269,38 @@ export interface WeeklyGoal extends Base {
 export interface GoalLink {
   weekly_goal_id: string;
   monthly_goal_id: string;
+}
+export interface Speaker extends Base {
+  workspace_id: string;
+  session_id: string | null;
+  name: string;
+  email: string;
+  phone: string;
+  organisation: string;
+  biography: string;
+  topic: string;
+  invitation_status:
+    | "not_invited"
+    | "invited"
+    | "awaiting_response"
+    | "confirmed"
+    | "declined"
+    | "completed";
+  confirmation_status: "pending" | "confirmed" | "declined";
+  agreed_date: string | null;
+  alternative_dates: string;
+  reminder_dates: string;
+  asset_requirements: string;
+  bio_photo_received: number;
+  flyer_approved: number;
+  owner_id: string | null;
+  notes: string;
+}
+export interface SpeakerFollowup extends Base {
+  speaker_id: string;
+  occurred_date: string;
+  channel: string;
+  summary: string;
 }
 export interface Data {
   settings: Settings;
@@ -287,6 +323,8 @@ export interface Data {
   monthly_goals: MonthlyGoal[];
   weekly_goals: WeeklyGoal[];
   goal_links: GoalLink[];
+  speakers: Speaker[];
+  speaker_followups: SpeakerFollowup[];
 }
 export type Resource = Exclude<keyof Data, "settings">;
 export interface AuthStatus {

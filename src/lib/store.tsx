@@ -32,6 +32,7 @@ const pages: Page[] = [
   "pipeline",
   "review",
   "goals",
+  "speakers",
   "team",
   "cloud",
   "settings",

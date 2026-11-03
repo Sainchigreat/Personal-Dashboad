@@ -162,6 +162,14 @@ function createSqliteBackend(): Db {
     sqlite.exec(
       "ALTER TABLE settings ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 1",
     );
+  if (!settingsColumns.includes("onboarding_completed"))
+    sqlite.exec(
+      "ALTER TABLE settings ADD COLUMN onboarding_completed INTEGER NOT NULL DEFAULT 0",
+    );
+  if (!settingsColumns.includes("onboarding_profile"))
+    sqlite.exec(
+      "ALTER TABLE settings ADD COLUMN onboarding_profile TEXT NOT NULL DEFAULT '{}'",
+    );
   const themeColumn = sqlite
     .prepare("PRAGMA table_info(settings)")
     .all()

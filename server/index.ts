@@ -400,6 +400,75 @@ app.post("/api/auth/logout", requireUser, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Explicit, irreversible account deletion. Requires the account password and
+// a typed confirmation, and refuses to orphan other active team members.
+// Deletes only this account's own records in FK-safe order; no bulk reset.
+app.delete("/api/account", requireUser, async (req, res, next) => {
+  try {
+    const input = z
+      .object({
+        password: z.string().min(1).max(200),
+        confirm: z.literal("DELETE MY ACCOUNT"),
+      })
+      .strict()
+      .parse(req.body);
+    const userId = (res.locals.session as UserSession).user_id;
+    const user = (await db
+      .prepare("SELECT id,password_hash FROM users WHERE id=?")
+      .get(userId)) as { id: string; password_hash: string } | undefined;
+    if (!user) return res.status(404).json({ error: "Account not found." });
+    if (!(await bcrypt.compare(input.password, user.password_hash)))
+      return res.status(401).json({ error: "Password does not match." });
+
+    const others = (await db
+      .prepare(
+        `SELECT COUNT(*) AS count FROM team_members m
+         JOIN team_workspaces w ON w.id=m.workspace_id
+         WHERE w.owner_user_id=? AND m.user_id!=? AND m.status='active'`,
+      )
+      .get(userId, userId)) as { count: number } | undefined;
+    if (Number(others?.count ?? 0) > 0)
+      return res.status(409).json({
+        error:
+          "Remove all other active team members before deleting your account, so their shared workspace is not orphaned.",
+      });
+
+    await db.exec("BEGIN IMMEDIATE");
+    try {
+      // Children before parents; personal rows cascade from users.
+      await db.prepare("DELETE FROM team_activity WHERE actor_user_id=?").run(userId);
+      await db.prepare("DELETE FROM team_comments WHERE user_id=?").run(userId);
+      await db
+        .prepare(
+          "DELETE FROM team_tasks WHERE assignee_user_id=? OR created_by=? OR reviewer_user_id=?",
+        )
+        .run(userId, userId, userId);
+      await db
+        .prepare("DELETE FROM team_goals WHERE created_by=?")
+        .run(userId);
+      await db.prepare("DELETE FROM team_invites WHERE invited_by=?").run(userId);
+      await db.prepare("DELETE FROM team_members WHERE user_id=?").run(userId);
+      await db
+        .prepare("DELETE FROM team_workspaces WHERE owner_user_id=?")
+        .run(userId);
+      await db.prepare("DELETE FROM users WHERE id=?").run(userId);
+      await db.exec("COMMIT");
+    } catch (error) {
+      await db.exec("ROLLBACK");
+      throw error;
+    }
+    res.clearCookie(sessionCookie, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+    return res.json({ ok: true, deleted: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 // Team routes share authentication and CSRF protection, but never expose
 // owner-only personal resources to team accounts.
 app.use("/api/team", requireUser, teamRouter);

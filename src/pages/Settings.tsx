@@ -592,6 +592,56 @@ export default function Settings() {
                 </Button>
               </div>
             </section>
+            <section className="panel settings-section danger-section">
+              <SectionHeading
+                title="Delete account"
+                sub="Irreversible. Requires your password and a typed confirmation. Other active team members must be removed first."
+              />
+              <form
+                className="danger-form"
+                onSubmit={async (event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  const password = String(form.get("password") || "");
+                  const confirm = String(form.get("confirm") || "");
+                  if (confirm !== "DELETE MY ACCOUNT") {
+                    toast('Type "DELETE MY ACCOUNT" exactly to confirm.', "error");
+                    return;
+                  }
+                  if (
+                    !window.confirm(
+                      "Delete your account and all of its records permanently? This cannot be undone.",
+                    )
+                  )
+                    return;
+                  try {
+                    await api("/account", {
+                      method: "DELETE",
+                      body: { password, confirm },
+                    });
+                    toast("Account deleted.");
+                    await signOut();
+                  } catch (error) {
+                    toast(
+                      error instanceof Error ? error.message : "Unable to delete account.",
+                      "error",
+                    );
+                  }
+                }}
+              >
+                <label>
+                  Password
+                  <input name="password" type="password" autoComplete="current-password" />
+                </label>
+                <label>
+                  Type DELETE MY ACCOUNT
+                  <input name="confirm" placeholder="DELETE MY ACCOUNT" />
+                </label>
+                <Button type="submit" variant="danger">
+                  Delete my account
+                </Button>
+              </form>
+            </section>
             <section className="panel settings-section">
               <SectionHeading
                 title="Integrations"
@@ -617,6 +667,33 @@ export default function Settings() {
                 Download backups regularly and store them somewhere secure. For
                 deployment, use a persistent disk and HTTPS.
               </p>
+            </section>
+            <section className="panel side-panel">
+              <div className="side-panel-icon accent">
+                <Sparkles size={18} />
+              </div>
+              <span className="overline">FIRST-USE GUIDE</span>
+              <h2>Reopen the setup guide.</h2>
+              <p>
+                Revisit your role, timezone, working days and focus areas at any
+                time. Your goals and records are never reset.
+              </p>
+              <Button
+                icon={Sparkles}
+                onClick={async () => {
+                  try {
+                    await updateSettings({ onboarding_completed: 0 });
+                    toast("Setup guide reopened.");
+                  } catch (error) {
+                    toast(
+                      error instanceof Error ? error.message : "Unable to reopen setup.",
+                      "error",
+                    );
+                  }
+                }}
+              >
+                Open setup guide
+              </Button>
             </section>
           </aside>
         </div>
