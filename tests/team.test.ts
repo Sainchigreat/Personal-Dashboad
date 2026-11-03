@@ -143,15 +143,21 @@ describe("integrated private team portals", () => {
         )
       ).status,
     ).toBe(403);
+    // Platform-wide signup: a new visitor gets their OWN clean workspace,
+    // which must not expose the first owner's private task.
+    const outsider = anonymous();
     expect(
       (
-        await authenticate(anonymous(), {
+        await authenticate(outsider, {
           name: "Uninvited",
           email: "other@example.com",
           password: "a-long-enough-password",
         })
       ).status,
-    ).toBe(403);
+    ).toBe(200);
+    const outsiderData = await request(outsider, "GET", "/bootstrap");
+    expect(outsiderData.status).toBe(200);
+    expect(JSON.stringify(outsiderData.body)).not.toContain("Owner private task");
   });
 
   it("issues single-use invitations bound to an email and creates team-only accounts", async () => {

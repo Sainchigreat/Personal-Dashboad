@@ -192,7 +192,7 @@ async function main() {
   );
   const monthlyTargets: Record<string, { target: number; unit: string; source: string; description: string }> = {
     "Sell 68 paid course seats": {
-      target: cycle?.sales_target ?? 68,
+      target: cycle?.sales_target || 68,
       unit: "paid seats",
       source: "sales",
       description:

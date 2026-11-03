@@ -186,6 +186,46 @@ git push origin <your-working-branch>
 Open a pull request from that branch when you want to merge the work. No repository credentials are needed in the codebase.
 
 
-## November 2–8 operating plan
+## Sign up, sign in and private workspaces
 
-The daily planner uses an editable recurring routine aligned to the operating plan: publish one useful piece daily; promote Graphic Design with AI and follow up warm leads; research 10 new/emerging plus 10 established businesses; send and log 20 actual outreach actions/proposals separately from research; and research/contact three promotional partners daily for Graphic Design with AI (not Next Chapter). Capture useful AI/design industry developments and record a daily close-out. The retired 05:00 job-search, 06:00 LinkedIn and 08:00 job-search batches are removed from the new routine and migrated out of the matching old starter routine while preserving unrelated custom tasks. Weekday tasks map the November 2–8 publication schedule, two Creative Studio projects, two separate brand-identity projects, Thursday YouTube tutorial, Friday Next Chapter session, Monday team meeting/designer briefs and Social Media Manager recruitment. Generated tasks start incomplete; no sales or publication is marked complete automatically.
+Momentum OS is a multi-user platform. The sign-in screen shows **Sign in** and
+**Create account** tabs; a new visitor registers with a name, email and a
+12-character password and gets an independent, clean private workspace. No
+course, sales target, November goal, team assignment or daily routine is copied
+into another account. Existing users sign in directly; invitations, team
+membership and workspace isolation are preserved.
+
+## Chisom's personal November plan
+
+Chisom's plan belongs to **one verified account only** (`personal_plan_owner`
+marker / `MOMENTUM_PERSONAL_OWNER_EMAIL`, server-side). Data lives in
+`server/personalPlan.ts`; `npm run reconcile:personal -- --owner-id <id> --apply`
+applies it idempotently. All other accounts start clean and build their own
+routine through onboarding.
+
+- **Prospecting:** research is delivered by the separate prospect-research
+  system as a daily prospect report. Chisom reviews the report, sends 20
+  targeted proposals/outreach messages, logs them and follows up. There is no
+  job-search task, no 5/6/8 AM batches and no "research 20 businesses" task.
+- **Course growth:** daily promotion, enquiry/warm-lead follow-up and three
+  Graphic Design with AI promotional partners (not Next Chapter speakers).
+- **Publishing:** a fixed Monday–Sunday calendar (Monday selected post, Tuesday
+  Carousel 1, Wednesday Brand Identity Project 1 + campaign output, Thursday
+  Carousel 2 + YouTube tutorial, Friday Next Chapter content, Saturday Brand
+  Identity Project 2 installment, Sunday Creative Studio Project 2 output). No
+  generic publishing item is generated when a specific publication is scheduled.
+- **Four distinct project tracks:** Creative Studio Project 1 (social-media
+  campaign), Creative Studio Project 2 (flyer), Brand Identity Project 1,
+  Brand Identity Project 2. Sunday adds the full weekly review, writing and
+  next-week planning session.
+- **Five monthly goals:** Graphic Design with AI course (₦1,000,000 revenue /
+  ₦14,900 / ~68 sales / 17 weekly), Next Chapter, Cartridge, Personal brand and
+  creative development, Client acquisition. November 2–8 weekly outcomes are
+  linked to them. Sales, publishing and project progress come from real records;
+  activity goals come from linked completed tasks counted once.
+
+The date-aware planner (`ensureDailyPlan`) is scoped by owner; it never injects
+Chisom's weekday schedule into another workspace. Supabase Auth's
+`handle_new_user` / `ensure_daily_plan` are likewise neutral: new Auth accounts
+get clean defaults only. See `docs/PERSONAL-PLAN-CORRECTIONS.md`.
+

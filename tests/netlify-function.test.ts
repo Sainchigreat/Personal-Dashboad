@@ -200,7 +200,7 @@ describe("Netlify Functions wrapper", () => {
       rewritten: true,
     });
     expect(bootstrap.status).toBe(200);
-    expect(bootstrap.body.cycles[0].sales_target).toBe(68);
+    expect(bootstrap.body.cycles[0].sales_target).toBe(0);
 
     const created = await invoke("POST", "/api/tasks", {
       cycle_id: bootstrap.body.cycles[0].id,

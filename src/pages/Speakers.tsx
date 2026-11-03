@@ -201,7 +201,9 @@ export default function Speakers() {
                         agreed_date: String(form.get("agreed_date") || "") || null,
                         alternative_dates: String(form.get("alternative_dates") || ""),
                         reminder_dates: String(form.get("reminder_dates") || ""),
+                        reminder_status: String(form.get("reminder_status") || "not_sent"),
                         asset_requirements: String(form.get("asset_requirements") || ""),
+                        asset_approval_status: String(form.get("asset_approval_status") || "pending"),
                         bio_photo_received: form.get("bio_photo_received") ? 1 : 0,
                         flyer_approved: form.get("flyer_approved") ? 1 : 0,
                         notes: String(form.get("notes") || ""),
@@ -258,7 +260,27 @@ export default function Speakers() {
                 <div className="goal-grid">
                   <label>Alternative dates<input name="alternative_dates" defaultValue={active.alternative_dates} /></label>
                   <label>Reminder dates<input name="reminder_dates" defaultValue={active.reminder_dates} /></label>
+                  <label>
+                    Reminder status
+                    <select name="reminder_status" defaultValue={active.reminder_status}>
+                      <option value="not_sent">not sent</option>
+                      <option value="scheduled">scheduled</option>
+                      <option value="sent">sent</option>
+                      <option value="acknowledged">acknowledged</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="goal-grid">
                   <label>Asset requirements<input name="asset_requirements" defaultValue={active.asset_requirements} /></label>
+                  <label>
+                    Creative asset approval
+                    <select name="asset_approval_status" defaultValue={active.asset_approval_status}>
+                      <option value="pending">pending</option>
+                      <option value="in_review">in review</option>
+                      <option value="approved">approved</option>
+                      <option value="changes_requested">changes requested</option>
+                    </select>
+                  </label>
                 </div>
                 <div className="speaker-checks">
                   <label className="onboarding-check">

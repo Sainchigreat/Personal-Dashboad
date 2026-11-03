@@ -6,6 +6,8 @@ import { invitationToken } from "../lib/invite";
 import type { AuthStatus } from "../types";
 import { Logo } from "../components/UI";
 
+type Mode = "signin" | "signup";
+
 export default function Auth({
   status,
   onAuthenticated,
@@ -17,33 +19,55 @@ export default function Auth({
 }) {
   const inviteToken = invitationToken();
   const joining = Boolean(inviteToken);
+  // Both options are always visible. A brand-new deployment starts on sign-up;
+  // returning visitors start on sign-in and can switch with one click.
+  const [mode, setMode] = useState<Mode>(status.needsSetup ? "signup" : "signin");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const signingUp = joining || mode === "signup";
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError("");
+    setSuccess("");
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setSuccess("");
     setBusy(true);
     const fields = new FormData(event.currentTarget);
     try {
+      const password = String(fields.get("password") || "");
+      if (signingUp && password.length < 12) {
+        setError("Use a password with at least 12 characters.");
+        return;
+      }
       const body: Record<string, string> = {
-        email: String(fields.get("email")),
-        password: String(fields.get("password")),
+        email: String(fields.get("email") || "").trim(),
+        password,
       };
-      if (status.needsSetup || joining) body.name = String(fields.get("name"));
+      if (signingUp) body.name = String(fields.get("name") || "").trim();
       if (inviteToken) body.inviteToken = inviteToken;
       const result = await api<{ csrfToken: string }>(
-        status.needsSetup || joining ? "/auth/register" : "/auth/login",
+        signingUp ? "/auth/register" : "/auth/login",
         { method: "POST", body },
       );
       setCsrf(result.csrfToken);
+      setSuccess(
+        signingUp ? "Account created. Opening your workspace…" : "Signed in.",
+      );
       if (joining) history.replaceState(null, "", "/");
       await onAuthenticated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to sign in.");
+      setError(e instanceof Error ? e.message : "Unable to continue.");
     } finally {
       setBusy(false);
     }
   }
+
   async function openPreview() {
     setBusy(true);
     setError("");
@@ -62,6 +86,7 @@ export default function Auth({
       setBusy(false);
     }
   }
+
   return (
     <main className="auth-page">
       <div className="auth-top">
@@ -80,7 +105,7 @@ export default function Auth({
           </h1>
           <p>
             One thoughtful place for your work, your ideas, and everything
-            you’re building.
+            you’re building. Create a private workspace or sign back in.
           </p>
           <div className="auth-orbit">
             <div />
@@ -97,8 +122,8 @@ export default function Auth({
           <h2>
             {joining
               ? "Join your team"
-              : status.needsSetup
-                ? "Create your workspace"
+              : mode === "signup"
+                ? "Create your account"
                 : "Welcome back"}
           </h2>
           <p>
@@ -106,10 +131,34 @@ export default function Auth({
               ? status.authenticated
                 ? `You are signed in as ${status.email}. Sign out before accepting this invitation.`
                 : "Create your account using the email address the invitation was sent to."
-              : status.needsSetup
-                ? "Set up a private owner account to get started."
+              : mode === "signup"
+                ? "Set up your own independent, private workspace."
                 : "Sign in to continue where you left off."}
           </p>
+
+          {!joining && (
+            <div className="auth-tabs" role="tablist" aria-label="Account access">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signin"}
+                className={mode === "signin" ? "active" : ""}
+                onClick={() => switchMode("signin")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signup"}
+                className={mode === "signup" ? "active" : ""}
+                onClick={() => switchMode("signup")}
+              >
+                Create account
+              </button>
+            </div>
+          )}
+
           {joining && status.authenticated ? (
             <div className="auth-form">
               {error && (
@@ -140,13 +189,15 @@ export default function Auth({
             </div>
           ) : (
             <form onSubmit={submit} className="auth-form">
-              {(status.needsSetup || joining) && (
+              {signingUp && (
                 <label>
                   Name
                   <input
                     name="name"
                     placeholder="Your name"
                     required
+                    minLength={1}
+                    maxLength={100}
                     autoComplete="name"
                   />
                 </label>
@@ -166,23 +217,29 @@ export default function Auth({
                 <input
                   name="password"
                   type="password"
-                  minLength={status.needsSetup || joining ? 12 : undefined}
+                  minLength={signingUp ? 12 : undefined}
+                  maxLength={200}
                   placeholder={
-                    status.needsSetup || joining
-                      ? "At least 12 characters"
-                      : "Enter your password"
+                    signingUp ? "At least 12 characters" : "Enter your password"
                   }
                   required
-                  autoComplete={
-                    status.needsSetup || joining
-                      ? "new-password"
-                      : "current-password"
-                  }
+                  autoComplete={signingUp ? "new-password" : "current-password"}
                 />
               </label>
+              {signingUp && (
+                <p className="auth-hint">
+                  Use at least 12 characters. Your workspace is private to this
+                  account.
+                </p>
+              )}
               {error && (
                 <div className="form-error" role="alert">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div className="form-success" role="status">
+                  {success}
                 </div>
               )}
               <button className="button primary wide" disabled={busy}>
@@ -190,8 +247,8 @@ export default function Auth({
                   ? "Please wait…"
                   : joining
                     ? "Create team account"
-                    : status.needsSetup
-                      ? "Create workspace"
+                    : mode === "signup"
+                      ? "Create account"
                       : "Sign in"}{" "}
                 <ArrowRight size={16} />
               </button>
@@ -219,9 +276,6 @@ export default function Auth({
             <ShieldCheck size={15} /> Your workspace, thoughtfully protected.
           </div>
         </div>
-      </div>
-      <div className="auth-bottom">
-        ONE SYSTEM. EVERY AMBITION. <span>© MOMENTUM OS</span>
       </div>
     </main>
   );

@@ -92,7 +92,7 @@ afterAll(async () => {
 });
 
 describe("private persistent workspace API", () => {
-  it("requires authentication and creates a single owner with November defaults", async () => {
+  it("requires authentication and creates an independent, clean workspace", async () => {
     expect((await request("GET", "/bootstrap")).status).toBe(401);
     expect((await request("GET", "/auth/status")).body.needsSetup).toBe(true);
     const result = await request("POST", "/auth/register", {
@@ -104,34 +104,43 @@ describe("private persistent workspace API", () => {
     cookie = result.cookie!.split(";")[0];
     csrf = result.body.csrfToken;
     const data = (await request("GET", "/bootstrap")).body;
+    // No other person's November plan is inherited.
     expect(data.cycles[0]).toMatchObject({
-      month: "2026-11",
-      sales_target: 68,
-      revenue_target: 1013200,
-      outreach_target: 20,
+      sales_target: 0,
+      revenue_target: 0,
+      outreach_target: 0,
       session_day: 5,
     });
+    expect(data.cycles[0].month).toMatch(/^\d{4}-\d{2}$/);
+    expect(data.products).toEqual([]);
     expect(data.settings).toMatchObject({
       timezone: "Africa/Lagos",
       work_start: "08:00",
       work_end: "17:00",
       theme: "light",
     });
-    expect(data.products[0]).toMatchObject({
-      name: "Graphic Design with AI",
+    cycleId = data.cycles[0].id;
+    const product = await request("POST", "/products", {
+      name: "Test product",
       price: 14900,
     });
-    cycleId = data.cycles[0].id;
-    productId = data.products[0].id;
-    expect(
-      (
-        await request("POST", "/auth/register", {
-          name: "Another",
-          email: "another@example.com",
-          password: "another-strong-password",
-        })
-      ).status,
-    ).toBe(403);
+    expect(product.status).toBe(201);
+    productId = product.body.id;
+    // A new visitor can create a SECOND independent workspace.
+    const second = await request("POST", "/auth/register", {
+      name: "Another",
+      email: "another@example.com",
+      password: "another-strong-password",
+    });
+    expect(second.status).toBe(200);
+    // Duplicate email is rejected clearly; no account is overwritten.
+    const duplicate = await request("POST", "/auth/register", {
+      name: "Duplicate",
+      email: "owner@example.com",
+      password: "another-strong-password",
+    });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error).toMatch(/already has an account/i);
     expect(
       (await request("PATCH", "/settings", { name: "No CSRF" }, false)).status,
     ).toBe(403);
