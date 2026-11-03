@@ -2,8 +2,7 @@
 
 **Date:** 2 November 2026
 **Branch:** `arena/b038e448-personal-dashboad`
-**PR:** #7 (open against `main`)
-**Status:** Phases 0–5 implemented and verified locally; additive migration and owner-only backfill applied to the live `Momentum` project; CI and Netlify preview checks green. **Not merged to `main`, not announced as shipped** — see §5.
+**Status:** PR #7 was merged on 3 November 2026 (merge commit `49ae355`) and published to Netlify. Chisom's personal-plan corrections subsequently landed via PR #9 (`06f9b2f`); see `docs/PERSONAL-PLAN-CORRECTIONS.md` for the current state.
 
 ---
 
@@ -94,7 +93,7 @@ Netlify production `https://p-momentum-os.netlify.app/api/pg/health` returns 200
 
 ---
 
-## 5. Release gate (why PR #7 is not merged)
+## 5. Release gate (historical — resolved)
 
 Blueprint §10/§11: *"Do not merge or announce shipped until CI is green, preview is inspected, and production deployment is verified."*
 
@@ -103,7 +102,7 @@ Blueprint §10/§11: *"Do not merge or announce shipped until CI is green, previ
 - Production health ✅ verified.
 - **Preview visually inspected ❌** — blocked by Netlify Team protection; requires the owner's Netlify session (or disabling site protection).
 
-Therefore PR #7 stays open. **Exact remaining actions:** (1) sign in to Netlify and inspect the deploy preview; (2) confirm the Goals, Onboarding, Workspace switcher and Speaker Register screens; (3) merge PR #7 to `main`; (4) re-run `npm run verify:netlify -- --url https://p-momentum-os.netlify.app` and confirm `/api/pg/health`, `/api/auth/status`, `/api/bootstrap`, login/logout and CSRF on production; (5) close PR #6.
+PR #7 was merged and published (`main@49ae355`), then PR #9 was merged and published (`main@06f9b2f`). Production `/api/pg/health` returns 200 and the sign-in screen now shows both **Sign in** and **Create account** tabs. The protected deploy preview still requires a human Netlify session for visual inspection; PR #6 remains open on its stale base.
 
 ---
 
