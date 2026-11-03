@@ -6,7 +6,7 @@ import { invitationToken } from "../lib/invite";
 import type { AuthStatus } from "../types";
 import { Logo } from "../components/UI";
 
-type AuthMode = "signup" | "signin";
+type Mode = "signin" | "signup";
 
 export default function Auth({
   status,
@@ -19,37 +19,50 @@ export default function Auth({
 }) {
   const inviteToken = invitationToken();
   const joining = Boolean(inviteToken);
-  const [mode, setMode] = useState<AuthMode>("signup");
-  const signingUp = mode === "signup" || status.needsSetup || joining;
+  // Both options are always visible. A brand-new deployment starts on sign-up;
+  // returning visitors start on sign-in and can switch with one click.
+  const [mode, setMode] = useState<Mode>(status.needsSetup ? "signup" : "signin");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const signingUp = joining || mode === "signup";
 
-  function changeMode(next: AuthMode) {
+  function switchMode(next: Mode) {
     setMode(next);
     setError("");
+    setSuccess("");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setSuccess("");
     setBusy(true);
     const fields = new FormData(event.currentTarget);
     try {
+      const password = String(fields.get("password") || "");
+      if (signingUp && password.length < 12) {
+        setError("Use a password with at least 12 characters.");
+        return;
+      }
       const body: Record<string, string> = {
-        email: String(fields.get("email")),
-        password: String(fields.get("password")),
+        email: String(fields.get("email") || "").trim(),
+        password,
       };
-      if (signingUp) body.name = String(fields.get("name"));
+      if (signingUp) body.name = String(fields.get("name") || "").trim();
       if (inviteToken) body.inviteToken = inviteToken;
       const result = await api<{ csrfToken: string }>(
         signingUp ? "/auth/register" : "/auth/login",
         { method: "POST", body },
       );
       setCsrf(result.csrfToken);
+      setSuccess(
+        signingUp ? "Account created. Opening your workspace…" : "Signed in.",
+      );
       if (joining) history.replaceState(null, "", "/");
       await onAuthenticated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : signingUp ? "Unable to create your account." : "Unable to sign in.");
+      setError(e instanceof Error ? e.message : "Unable to continue.");
     } finally {
       setBusy(false);
     }
@@ -92,7 +105,7 @@ export default function Auth({
           </h1>
           <p>
             One thoughtful place for your work, your ideas, and everything
-            you’re building.
+            you’re building. Create a private workspace or sign back in.
           </p>
           <div className="auth-orbit">
             <div />
@@ -106,33 +119,11 @@ export default function Auth({
           <div className="auth-icon">
             {signingUp ? <UserRoundPlus size={20} /> : <LockKeyhole size={20} />}
           </div>
-          {!joining && !status.needsSetup && (
-            <div className="auth-switch" role="tablist" aria-label="Account access">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={signingUp}
-                className={signingUp ? "active" : ""}
-                onClick={() => changeMode("signup")}
-              >
-                Create account
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={!signingUp}
-                className={!signingUp ? "active" : ""}
-                onClick={() => changeMode("signin")}
-              >
-                Sign in
-              </button>
-            </div>
-          )}
           <h2>
             {joining
               ? "Join your team"
-              : signingUp
-                ? status.needsSetup ? "Create your workspace" : "Create your account"
+              : mode === "signup"
+                ? "Create your account"
                 : "Welcome back"}
           </h2>
           <p>
@@ -140,13 +131,41 @@ export default function Auth({
               ? status.authenticated
                 ? `You are signed in as ${status.email}. Sign out before accepting this invitation.`
                 : "Create your account using the email address the invitation was sent to."
-              : signingUp
-                ? "Start with your own private workspace. You can plan your month, break it into weeks, and organise each day."
+              : mode === "signup"
+                ? "Set up your own independent, private workspace."
                 : "Sign in to continue where you left off."}
           </p>
+
+          {!joining && (
+            <div className="auth-tabs auth-switch" role="tablist" aria-label="Account access">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signin"}
+                className={mode === "signin" ? "active" : ""}
+                onClick={() => switchMode("signin")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signup"}
+                className={mode === "signup" ? "active" : ""}
+                onClick={() => switchMode("signup")}
+              >
+                Create account
+              </button>
+            </div>
+          )}
+
           {joining && status.authenticated ? (
             <div className="auth-form">
-              {error && <div className="form-error" role="alert">{error}</div>}
+              {error && (
+                <div className="form-error" role="alert">
+                  {error}
+                </div>
+              )}
               <button
                 className="button primary wide"
                 disabled={busy}
@@ -156,7 +175,9 @@ export default function Auth({
                   try {
                     await onSignOut();
                   } catch (e) {
-                    setError(e instanceof Error ? e.message : "Unable to sign out.");
+                    setError(
+                      e instanceof Error ? e.message : "Unable to sign out.",
+                    );
                   } finally {
                     setBusy(false);
                   }
@@ -170,11 +191,13 @@ export default function Auth({
             <form onSubmit={submit} className="auth-form">
               {signingUp && (
                 <label>
-                  Your name
+                  Name
                   <input
                     name="name"
-                    placeholder="How should we address you?"
+                    placeholder="Your name"
                     required
+                    minLength={1}
+                    maxLength={100}
                     autoComplete="name"
                   />
                 </label>
@@ -195,19 +218,37 @@ export default function Auth({
                   name="password"
                   type="password"
                   minLength={signingUp ? 12 : undefined}
-                  placeholder={signingUp ? "Create a password (12+ characters)" : "Enter your password"}
+                  maxLength={200}
+                  placeholder={
+                    signingUp ? "At least 12 characters" : "Enter your password"
+                  }
                   required
                   autoComplete={signingUp ? "new-password" : "current-password"}
                 />
               </label>
-              {error && <div className="form-error" role="alert">{error}</div>}
+              {signingUp && (
+                <p className="auth-hint">
+                  Use at least 12 characters. Your workspace is private to this
+                  account.
+                </p>
+              )}
+              {error && (
+                <div className="form-error" role="alert">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="form-success" role="status">
+                  {success}
+                </div>
+              )}
               <button className="button primary wide" disabled={busy}>
                 {busy
                   ? "Please wait…"
                   : joining
                     ? "Create team account"
-                    : signingUp
-                      ? "Create free account"
+                    : mode === "signup"
+                      ? "Create account"
                       : "Sign in"}{" "}
                 <ArrowRight size={16} />
               </button>
@@ -215,29 +256,26 @@ export default function Auth({
           )}
           {status.previewEnabled && !joining && (
             <>
-              <div className="auth-divider"><span>OR</span></div>
-              <button className="button secondary wide" onClick={openPreview} disabled={busy}>
+              <div className="auth-divider">
+                <span>OR</span>
+              </div>
+              <button
+                className="button secondary wide"
+                onClick={openPreview}
+                disabled={busy}
+              >
                 Open sandbox preview <ArrowRight size={16} />
               </button>
               <p className="preview-warning">
-                Preview access is not private. Use a normal deployment for personal data.
+                Preview access is not private. Use a normal deployment for
+                personal data.
               </p>
             </>
-          )}
-          {!joining && !status.needsSetup && (
-            <p className="auth-legal">
-              {signingUp
-                ? <>Already have an account? <button type="button" onClick={() => changeMode("signin")}>Sign in</button></>
-                : <>New to Momentum? <button type="button" onClick={() => changeMode("signup")}>Create an account</button></>}
-            </p>
           )}
           <div className="auth-foot">
             <ShieldCheck size={15} /> Your workspace, thoughtfully protected.
           </div>
         </div>
-      </div>
-      <div className="auth-bottom">
-        ONE SYSTEM. EVERY AMBITION. <span>© MOMENTUM OS</span>
       </div>
     </main>
   );

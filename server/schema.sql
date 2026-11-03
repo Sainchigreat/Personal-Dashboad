@@ -451,7 +451,9 @@ CREATE TABLE IF NOT EXISTS speakers (
   agreed_date TEXT,
   alternative_dates TEXT NOT NULL DEFAULT '',
   reminder_dates TEXT NOT NULL DEFAULT '',
+  reminder_status TEXT NOT NULL DEFAULT 'not_sent',
   asset_requirements TEXT NOT NULL DEFAULT '',
+  asset_approval_status TEXT NOT NULL DEFAULT 'pending',
   bio_photo_received INTEGER NOT NULL DEFAULT 0,
   flyer_approved INTEGER NOT NULL DEFAULT 0,
   owner_id TEXT REFERENCES users(id) ON DELETE SET NULL,
@@ -473,3 +475,11 @@ CREATE INDEX IF NOT EXISTS idx_speakers_user_status ON speakers(user_id,invitati
 CREATE INDEX IF NOT EXISTS idx_speakers_session ON speakers(session_id);
 CREATE INDEX IF NOT EXISTS idx_speakers_owner ON speakers(owner_id);
 CREATE INDEX IF NOT EXISTS idx_speaker_followups_speaker ON speaker_followups(speaker_id,occurred_date);
+
+-- Exactly one verified account may carry Chisom's personal November plan.
+-- All other accounts start clean; this marker never seeds data, it only scopes
+-- the personal planner in server/personalPlan.ts.
+CREATE TABLE IF NOT EXISTS personal_plan_owner (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  marked_at TEXT NOT NULL
+);

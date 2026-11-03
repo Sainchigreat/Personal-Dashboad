@@ -224,4 +224,33 @@ describe("authoritative goal progress", () => {
     expect(goalProgress(base(), asGoalLike(monthly)).period.start).toBe("2026-11-01");
     expect(goalProgress(base(), asGoalLike(weekly)).period.start).toBe("2026-11-02");
   });
+
+  it("daily task completion updates only the matching weekly goal, once", () => {
+    const data = base({
+      tasks: [
+        task("a", "todo", "w1"),
+        task("b", "todo", "w1"),
+        task("c", "todo", null),
+      ] as unknown as Data["tasks"],
+      sales: [sale("s1", "paid", 14900, "2026-11-02")] as unknown as Data["sales"],
+    });
+    const activity = goal({ source: "tasks", target: 3 });
+    const sales = goal({ source: "sales", target: 17 });
+    const publishing = goal({ source: "publishing", target: 7 });
+    expect(goalProgress(data, activity, ["a", "b", "c"]).numerator).toBe(0);
+    // Complete one linked task: activity +1, sales/publishing unaffected.
+    const after = base({
+      tasks: [
+        task("a", "done", "w1"),
+        task("b", "todo", "w1"),
+        task("c", "done", null),
+      ] as unknown as Data["tasks"],
+      sales: data.sales,
+    });
+    expect(goalProgress(after, activity, ["a", "b"]).numerator).toBe(1);
+    expect(goalProgress(after, sales, ["a"]).numerator).toBe(1); // from paid sale, not the checkbox
+    expect(goalProgress(after, publishing, ["a"]).numerator).toBe(0);
+    // Same task counted once even if linked twice.
+    expect(goalProgress(after, activity, ["a", "a", "b"]).numerator).toBe(1);
+  });
 });

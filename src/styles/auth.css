@@ -192,44 +192,21 @@
   letter-spacing: 0.09em;
 }
 
-.auth-switch {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  margin: 0 0 20px;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-  background: var(--surface-2);
+/* Sign in / Create account switcher + feedback */
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-3);border-radius:12px;padding:4px;margin:0 0 18px}
+.auth-tabs button{border:0;background:transparent;border-radius:9px;padding:10px 8px;font:inherit;font-size:.86rem;font-weight:600;color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
+.auth-tabs button:hover{color:var(--text)}
+.auth-tabs button.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.auth-hint{font-size:.75rem;color:var(--muted);line-height:1.45;margin:-2px 0 0}
+.form-success{border:1px solid #86efac;background:#f0fdf4;color:#166534;border-radius:10px;padding:10px 12px;font-size:.83rem;line-height:1.4}
+@media(max-width:680px){
+  .auth-card{padding:20px}
+  .auth-tabs button{padding:10px 4px;font-size:.8rem}
 }
-.auth-switch button {
-  border: 0;
-  border-radius: 7px;
-  padding: 10px 12px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.auth-switch button.active {
-  background: var(--surface);
-  color: var(--accent-strong);
-  box-shadow: 0 1px 4px #17203314;
-}
-.auth-legal {
-  margin: 18px 0 0;
-  text-align: center;
-  color: var(--muted);
-  font-size: 11px;
-}
-.auth-legal button {
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
+
+/* Retained from PR #8 (auth-switch / legal link) for compatibility. */
+.auth-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin:0 0 20px;border:1px solid var(--border-light);border-radius:10px;background:var(--surface-2)}
+.auth-switch button{border:0;border-radius:7px;padding:10px 12px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.auth-switch button.active{background:var(--surface);color:var(--accent-strong);box-shadow:0 1px 4px #17203314}
+.auth-legal{margin:18px 0 0;text-align:center;color:var(--muted);font-size:11px}
+.auth-legal button{border:0;padding:0;background:transparent;color:var(--accent);font:inherit;font-weight:700;cursor:pointer}

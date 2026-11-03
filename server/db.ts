@@ -15,6 +15,15 @@ import { chmodSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import {
+  PERSONAL_OWNER_ENV,
+  PERSONAL_ROUTINE,
+  PERSONAL_WEEKDAY_PLAN,
+  PERSONAL_MONTHLY_GOALS,
+  PERSONAL_WEEKLY_GOALS,
+  OBSOLETE_TITLES,
+  type PlanTask,
+} from "./personalPlan";
+import {
   getPool,
   isPostgresConfigured,
   toPostgres,
@@ -54,55 +63,10 @@ export function dateInZone(timeZone: string, date = new Date()): string {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-const defaultTemplates = [
-  { title: "Publish one useful piece of content today on Instagram and/or WhatsApp", category: "Personal Brand", priority: "high", estimated_minutes: 45 },
-  { title: "Promote Graphic Design with AI; respond to enquiries and follow up warm leads", category: "Course Growth", priority: "high", estimated_minutes: 40 },
-  { title: "Research 10 new/emerging businesses and 10 established businesses", category: "Client Pipeline", priority: "high", estimated_minutes: 45 },
-  { title: "Send 20 relevant client outreach messages/proposals and log each interaction", category: "Client Pipeline", priority: "high", estimated_minutes: 60 },
-  { title: "Research and contact 3 promotional partners for Graphic Design with AI", category: "Course Growth", priority: "high", estimated_minutes: 30 },
-  { title: "Capture one useful AI, design or creative-industry development", category: "Personal Brand", priority: "medium", estimated_minutes: 20 },
-  { title: "Record today's wins, blockers and tomorrow's first action", category: "Personal", priority: "low", estimated_minutes: 10 },
-];
-
-// Migrate only the untouched starter routine; preserve personalised routines.
-const legacyTemplates = [
-  {
-    title: "Follow up on course enquiries",
-    category: "Course Growth",
-    priority: "high",
-    estimated_minutes: 20,
-  },
-  {
-    title: "Reach out to potential clients",
-    category: "Client Pipeline",
-    priority: "high",
-    estimated_minutes: 60,
-  },
-  {
-    title: "Make progress on a creative project",
-    category: "Creative Studio",
-    priority: "high",
-    estimated_minutes: 60,
-  },
-  {
-    title: "Share useful work on WhatsApp",
-    category: "Course Growth",
-    priority: "medium",
-    estimated_minutes: 15,
-  },
-  {
-    title: "Capture a content idea",
-    category: "Personal Brand",
-    priority: "medium",
-    estimated_minutes: 10,
-  },
-  {
-    title: "Plan tomorrow\u2019s top three outcomes",
-    category: "Personal",
-    priority: "low",
-    estimated_minutes: 10,
-  },
-];
+// New accounts start CLEAN. Chisom's personal November routine lives in
+// server/personalPlan.ts and is applied only to the verified personal owner.
+// No other account inherits his goals, targets, tasks or publishing calendar.
+const defaultTemplates: PlanTask[] = [];
 
 // Load node:sqlite lazily. The deployed Netlify Function only ever uses the
 // PostgreSQL backend; requiring the built-in conditionally means an older Node
@@ -200,16 +164,6 @@ function createSqliteBackend(): Db {
     sqlite.exec("ROLLBACK");
     throw error;
   }
-  sqlite
-    .prepare(
-      "UPDATE settings SET daily_templates=?,updated_at=? WHERE daily_templates=?",
-    )
-    .run(
-      JSON.stringify(defaultTemplates),
-      now(),
-      JSON.stringify(legacyTemplates),
-    );
-
   // Additive goal-hierarchy migration. schema.sql creates the new tables for
   // both fresh and existing databases; this adds the optional daily-deliverable
   // link to pre-existing tasks tables without rebuilding or deleting rows.
@@ -221,6 +175,15 @@ function createSqliteBackend(): Db {
   sqlite.exec(
     "CREATE INDEX IF NOT EXISTS idx_tasks_weekly_goal ON tasks(weekly_goal_id,status)",
   );
+  const speakerColumns = columns("speakers");
+  if (!speakerColumns.includes("reminder_status"))
+    sqlite.exec(
+      "ALTER TABLE speakers ADD COLUMN reminder_status TEXT NOT NULL DEFAULT 'not_sent'",
+    );
+  if (!speakerColumns.includes("asset_approval_status"))
+    sqlite.exec(
+      "ALTER TABLE speakers ADD COLUMN asset_approval_status TEXT NOT NULL DEFAULT 'pending'",
+    );
 
   return {
     prepare: (sql) => {
@@ -335,14 +298,25 @@ function weekday(day: string): number {
   return new Date(`${day}T12:00:00.000Z`).getUTCDay();
 }
 
+/**
+ * Create an INDEPENDENT, CLEAN personal workspace.
+ *
+ * No course, no 68-seat target, no November goals, no personal routine, no
+ * Next Chapter calendar is copied here. Chisom's personal plan is applied
+ * separately, idempotently and only to the verified personal owner by
+ * ensurePersonalPlan() / scripts/reconcile-personal-plan.ts.
+ *
+ * A neutral current-month cycle is created because the UI requires one; all
+ * targets are zero until the account owner sets their own goals.
+ */
 export async function createWorkspace(
   userId: string,
   email: string,
   passwordHash: string,
   name: string,
-  seedInitialOwnerPlan = true,
 ): Promise<void> {
   const stamp = now();
+  const month = dateInZone("Africa/Lagos").slice(0, 7);
   await db.exec("BEGIN IMMEDIATE");
   try {
     await db
@@ -358,72 +332,39 @@ export async function createWorkspace(
       .run(
         id(),
         userId,
-        name || "Chisom Ogbonna",
+        name || "My Workspace",
         "Africa/Lagos",
         "08:00",
         "17:00",
         "light",
-        seedInitialOwnerPlan ? 1 : 0,
-        JSON.stringify(seedInitialOwnerPlan ? defaultTemplates : []),
+        0,
+        JSON.stringify(defaultTemplates),
         stamp,
         stamp,
       );
-    if (seedInitialOwnerPlan) {
-      await db
-        .prepare(
-          `INSERT INTO products (id,user_id,name,price,description,active,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?)`,
-        )
-        .run(
-          id(),
-          userId,
-          "Graphic Design with AI",
-          14900,
-          "Digital course",
-          1,
-          stamp,
-          stamp,
-        );
-      await db
-        .prepare(
-          `INSERT INTO cycles (id,user_id,month,theme,objective,objectives,sales_target,revenue_target,outreach_target,projects_target,chapter_content_target,course_days,session_day,status,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        )
-        .run(
-          id(),
-          userId,
-          "2026-11",
-          "Build with intention",
-          "Sell 68 seats of Graphic Design with AI while building a consistent creative and client pipeline.",
-          [
-            "Sell 68 seats of Graphic Design with AI at the ₦14,900 launch price.",
-            "Host Next Chapter live every Friday.",
-            "Complete two substantial Creative Studio projects each week.",
-            "Publish on all seven days; Tuesday, Wednesday and Friday include course-growth content.",
-            "Produce two substantial Next Chapter content pieces weekly.",
-            "Research 10 new/emerging and 10 established businesses daily; record research separately from actual outreach and send 20 relevant approaches.",
-            "Research and contact three promotional partners daily for Graphic Design with AI (not Next Chapter).",
-            "Develop the monthly content bank and publish a YouTube/free tutorial by Thursday.",
-            "Advance two brand-identity projects; first project's content is ready Wednesday.",
-            "Use weekends for content batching and weekly preparation.",
-          ].join("\n"),
-          68,
-          1013200,
-          20,
-          2,
-          2,
-          "2,3,5",
-          5,
-          "active",
-          stamp,
-          stamp,
-        );
-  
-    }
-    // No owner-specific plan is seeded here. Every new account (including a
-    // production signup) starts clean. The verified owner's November plan is
-    // applied once, idempotently, by scripts/backfill-goals.ts, which is scoped
-    // to that owner's identity only -- see docs/GOAL-HIERARCHY.md.
+    await db
+      .prepare(
+        `INSERT INTO cycles (id,user_id,month,theme,objective,objectives,sales_target,revenue_target,outreach_target,projects_target,chapter_content_target,course_days,session_day,status,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        id(),
+        userId,
+        month,
+        "My month",
+        "Set your own goals for this month.",
+        "",
+        0,
+        0,
+        0,
+        0,
+        0,
+        "",
+        5,
+        "active",
+        stamp,
+        stamp,
+      );
     await db.exec("COMMIT");
   } catch (error) {
     await db.exec("ROLLBACK");
@@ -431,7 +372,219 @@ export async function createWorkspace(
   }
 }
 
-/** Generate editable daily plans in the owner's timezone; never fake completed activity. */
+/** The verified personal owner, resolved by server env or a DB marker row. */
+export async function isPersonalOwner(userId: string): Promise<boolean> {
+  const configured = process.env[PERSONAL_OWNER_ENV]?.trim().toLowerCase();
+  if (configured) {
+    const byEmail = await db
+      .prepare("SELECT 1 FROM users WHERE id=? AND lower(email)=?")
+      .get(userId, configured);
+    if (byEmail) return true;
+  }
+  const marker = await db
+    .prepare("SELECT 1 FROM personal_plan_owner WHERE user_id=?")
+    .get(userId);
+  return Boolean(marker);
+}
+
+/** Mark one verified account as the personal-workspace owner (idempotent). */
+export async function markPersonalOwner(userId: string): Promise<void> {
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO personal_plan_owner(user_id,marked_at) VALUES (?,?)",
+    )
+    .run(userId, now());
+}
+
+/**
+ * Idempotently apply Chisom's five monthly goals, November 2-8 weekly goals
+ * and the corrected recurring routine to ONE verified owner. Never deletes or
+ * overwrites another account's rows. Call from a scoped reconcile script.
+ */
+export async function ensurePersonalPlan(userId: string): Promise<void> {
+  const stamp = now();
+  const weekStart = "2026-11-02";
+  const weekEnd = "2026-11-08";
+  const monthStart = "2026-11-01";
+  const monthEnd = "2026-11-30";
+
+  await markPersonalOwner(userId);
+  await db
+    .prepare("UPDATE settings SET daily_templates=?,auto_plan=1,updated_at=? WHERE user_id=?")
+    .run(JSON.stringify(PERSONAL_ROUTINE), stamp, userId);
+  await db
+    .prepare(
+      "UPDATE cycles SET sales_target=68,revenue_target=1000000,outreach_target=20,status='active' WHERE user_id=? AND month='2026-11'",
+    )
+    .run(userId);
+
+  const monthlyIds = new Map<string, string>();
+  for (const goal of PERSONAL_MONTHLY_GOALS) {
+    const existing = (await db
+      .prepare("SELECT id FROM monthly_goals WHERE user_id=? AND title=?")
+      .get(userId, goal.title)) as { id: string } | undefined;
+    if (existing) {
+      monthlyIds.set(goal.key, existing.id);
+      continue;
+    }
+    const goalId = id();
+    monthlyIds.set(goal.key, goalId);
+    await db
+      .prepare(
+        `INSERT INTO monthly_goals
+         (id,user_id,workspace_id,title,description,category,metric_type,source,target,unit,baseline,status,start_date,end_date,notes,created_at,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        goalId,
+        userId,
+        "personal",
+        goal.title,
+        goal.description,
+        "November operating plan",
+        goal.metric_type,
+        goal.source,
+        goal.target,
+        goal.unit,
+        0,
+        "active",
+        monthStart,
+        monthEnd,
+        goal.notes,
+        stamp,
+        stamp,
+      );
+  }
+
+  const weeklyIds = new Map<string, string>();
+  for (const goal of PERSONAL_WEEKLY_GOALS) {
+    const existing = (await db
+      .prepare(
+        "SELECT id FROM weekly_goals WHERE user_id=? AND week_start=? AND outcome=?",
+      )
+      .get(userId, weekStart, goal.outcome)) as { id: string } | undefined;
+    if (existing) {
+      weeklyIds.set(goal.key, existing.id);
+      continue;
+    }
+    const goalId = id();
+    weeklyIds.set(goal.key, goalId);
+    await db
+      .prepare(
+        `INSERT INTO weekly_goals
+         (id,user_id,workspace_id,monthly_goal_id,cycle_id,week_start,week_end,outcome,target,unit,current,source,owner_id,assignee_id,priority,status,visibility,notes,created_at,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        goalId,
+        userId,
+        "personal",
+        monthlyIds.get(goal.monthlyKey) || null,
+        null,
+        weekStart,
+        weekEnd,
+        goal.outcome,
+        goal.target,
+        goal.unit,
+        0,
+        goal.source,
+        userId,
+        null,
+        "high",
+        "active",
+        "private",
+        goal.notes,
+        stamp,
+        stamp,
+      );
+  }
+}
+
+/** Build one day's plan for the verified personal owner. */
+async function personalDayPlan(
+  userId: string,
+  day: string,
+): Promise<{
+  planned: PlanTask[];
+  goalIds: Map<string, string>;
+  cycleId: string | null;
+}> {
+  const weekdayNumber = weekday(day);
+  const cycle = (await db
+    .prepare("SELECT id FROM cycles WHERE user_id=? AND month=?")
+    .get(userId, day.slice(0, 7))) as { id: string } | undefined;
+  const weekStart = addDays(day, -(weekdayNumber === 0 ? 6 : weekdayNumber - 1));
+  const goalIds = new Map<string, string>();
+  for (const goal of PERSONAL_WEEKLY_GOALS) {
+    const row = (await db
+      .prepare(
+        "SELECT id FROM weekly_goals WHERE user_id=? AND week_start=? AND outcome=?",
+      )
+      .get(userId, weekStart, goal.outcome)) as { id: string } | undefined;
+    if (row) goalIds.set(goal.key, row.id);
+  }
+  const planned = [
+    ...(PERSONAL_WEEKDAY_PLAN[weekdayNumber] || []),
+    ...PERSONAL_ROUTINE,
+  ].slice(0, 30);
+  return { planned, goalIds, cycleId: cycle?.id || null };
+}
+
+/**
+ * Insert a day's tasks. When onlyMissing is true (reconciliation) nothing is
+ * duplicated and user deletions are respected on subsequent normal runs.
+ */
+async function insertDayTasks(
+  userId: string,
+  day: string,
+  info: Awaited<ReturnType<typeof personalDayPlan>>,
+  onlyMissing: boolean,
+): Promise<number> {
+  const stamp = now();
+  const insert = db.prepare(
+    `INSERT INTO tasks(id,user_id,cycle_id,weekly_goal_id,title,category,priority,status,due_date,scheduled_time,estimated_minutes,sort_order,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,'todo',?,?,?,?,?,?)`,
+  );
+  let inserted = 0;
+  for (const [index, template] of info.planned.entries()) {
+    if (typeof template.title !== "string" || !template.title.trim()) continue;
+    if (onlyMissing) {
+      const existing = await db
+        .prepare(
+          "SELECT 1 FROM tasks WHERE user_id=? AND due_date=? AND title=?",
+        )
+        .get(userId, day, template.title);
+      if (existing) continue;
+    }
+    const priority = ["high", "medium", "low"].includes(template.priority || "")
+      ? template.priority!
+      : "medium";
+    await insert.run(
+      id(),
+      userId,
+      info.cycleId,
+      info.goalIds.get(template.goalKey || "") || null,
+      template.title.trim().slice(0, 200),
+      String(template.category || "Personal").slice(0, 80),
+      priority,
+      day,
+      String((template as { scheduled_time?: string }).scheduled_time || ""),
+      Math.max(0, Math.min(1440, Number(template.estimated_minutes) || 0)),
+      index,
+      stamp,
+      stamp,
+    );
+    inserted += 1;
+  }
+  return inserted;
+}
+
+/**
+ * Generate editable daily plans in the owner's timezone; never fake completed
+ * activity. Chisom's personal November routine and weekday schedule are applied
+ * ONLY to the verified personal owner. All other accounts generate from their
+ * own templates and never inherit another workspace's work.
+ */
 export async function ensureDailyPlan(
   userId: string,
   referenceDate = new Date(),
@@ -449,7 +602,7 @@ export async function ensureDailyPlan(
     .prepare("SELECT id FROM cycles WHERE user_id=? AND month=?")
     .get(userId, day.slice(0, 7))) as { id: string } | undefined;
 
-  // Seven-day-ahead guest confirmation is independent of today's plan generation.
+  // Seven-day-ahead guest confirmation is independent of the recurring plan.
   const sessionDay = addDays(day, 7);
   const sessions = (await db
     .prepare(
@@ -471,7 +624,7 @@ export async function ensureDailyPlan(
         )
         .get(userId, session.id, title))
     ) {
-      const stamp = now();
+      const sessionStamp = now();
       await db
         .prepare(
           `INSERT INTO tasks(id,user_id,cycle_id,session_id,title,description,category,priority,status,due_date,estimated_minutes,sort_order,created_at,updated_at)
@@ -485,20 +638,15 @@ export async function ensureDailyPlan(
           title,
           "Confirm the Next Chapter guest seven days before the live session and update the session record.",
           day,
-          stamp,
-          stamp,
+          sessionStamp,
+          sessionStamp,
         );
     }
   }
 
   if (!profile.auto_plan) return;
-  let templates: Array<{
-    title?: string;
-    category?: string;
-    priority?: string;
-    estimated_minutes?: number;
-    scheduled_time?: string;
-  }>;
+  const personal = await isPersonalOwner(userId);
+  let templates: PlanTask[] = [];
   try {
     templates = JSON.parse(profile.daily_templates);
   } catch {
@@ -506,43 +654,27 @@ export async function ensureDailyPlan(
   }
   if (!Array.isArray(templates)) return;
 
-  // Reconcile the exact retired starter routine in existing workspaces while
-  // leaving unrelated, user-authored recurring tasks untouched.
-  const retired = new Set([
-    "Review the 5 AM batch: 10 job listings and 10 trigger-based outreach targets",
-    "Review the 6 AM LinkedIn batch: 10 roles and 10 founders or product owners",
-    "Review the 8 AM batch: 10 fresh job listings and 10 trigger-based outreach targets",
-  ]);
-  const legacyOutreach = "Complete and log 20 targeted client outreach actions";
-  let routineChanged = false;
-  const reconciled = templates.filter((item) => {
-    if (retired.has(String(item.title || ""))) {
-      routineChanged = true;
-      return false;
+  // Reconcile obsolete work without deleting user-authored recurring tasks.
+  // No job-search batches, no manual "research 20 businesses", no generic
+  // publishing item. Chisom's routine is re-applied only to his own account.
+  const obsolete = new Set(OBSOLETE_TITLES);
+  let cleaned = templates.filter(
+    (item) => !obsolete.has(String(item.title || "")),
+  );
+  if (personal) {
+    const combined = [...cleaned];
+    for (const routine of PERSONAL_ROUTINE) {
+      if (!combined.some((item) => item.title === routine.title))
+        combined.push({ ...routine });
     }
-    return true;
-  });
-  const legacyIndex = reconciled.findIndex((item) => item.title === legacyOutreach);
-  if (legacyIndex >= 0) {
-    reconciled.splice(legacyIndex, 1,
-      { title: "Research 10 new/emerging businesses and 10 established businesses", category: "Client Pipeline", priority: "high", estimated_minutes: 45 },
-      { title: "Send 20 relevant client outreach messages/proposals and log each interaction", category: "Client Pipeline", priority: "high", estimated_minutes: 60 },
-    );
-    routineChanged = true;
+    cleaned = combined;
   }
-  const ensureRoutineTask = (title: string, category: string, minutes: number) => {
-    if (!reconciled.some((item) => item.title === title)) {
-      reconciled.push({ title, category, priority: "high", estimated_minutes: minutes });
-      routineChanged = true;
-    }
-  };
-  ensureRoutineTask("Publish one useful piece of content today on Instagram and/or WhatsApp", "Personal Brand", 45);
-  ensureRoutineTask("Research and contact 3 promotional partners for Graphic Design with AI", "Course Growth", 30);
-  if (routineChanged) {
-    await db.prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE user_id=?")
-      .run(JSON.stringify(reconciled), now(), userId);
-    templates = reconciled;
+  if (JSON.stringify(cleaned) !== JSON.stringify(templates)) {
+    await db
+      .prepare("UPDATE settings SET daily_templates=?,updated_at=? WHERE user_id=?")
+      .run(JSON.stringify(cleaned), now(), userId);
   }
+
   if (
     await db
       .prepare("SELECT day FROM generated_days WHERE user_id=? AND day=?")
@@ -550,98 +682,62 @@ export async function ensureDailyPlan(
   )
     return;
 
-  const weekdayNumber = weekday(day);
-  const planned = [...templates.slice(0, 20)];
-  const add = (title: string, category: string, priority = "high", minutes = 60) =>
-    planned.push({ title, category, priority, estimated_minutes: minutes });
+  const info = personal
+    ? await personalDayPlan(userId, day)
+    : {
+        planned: cleaned.slice(0, 30),
+        goalIds: new Map<string, string>(),
+        cycleId: cycle?.id || null,
+      };
 
-  // Daily operating rhythm plus a concrete seven-day execution plan.
-  if (weekdayNumber === 1) {
-    add("Choose both Creative Studio projects and define this week's deliverables", "Creative Studio", "high", 30);
-    add("Start Creative Project 1: build the social-media campaign (Monday–Wednesday)", "Creative Studio", "high", 120);
-    add("Write the monthly content bank plan and this week's publishing schedule", "Personal Brand", "high", 60);
-    add("Write the Next Chapter announcement and session script", "Next Chapter", "high", 40);
-    add("Hold the team strategy meeting and assign owners and deadlines", "Team Workspace", "high", 45);
-    add("Brief designers on the Next Chapter main flyer, speaker-bio flyer and separate advertising flyer", "Next Chapter", "high", 30);
-    add("Begin recruiting a Social Media Manager (separate from the existing Community Manager)", "Personal Brand", "high", 30);
-    add("Select and publish Monday's planned post", "Personal Brand", "high", 45);
-    add("Start Brand Identity Project 1; prepare its first content milestone for Wednesday", "Personal Brand", "high", 90);
-  }
-  if (weekdayNumber === 2) {
-    add("Publish Carousel 1 and distribute it", "Personal Brand", "high", 45);
-    add("Continue Creative Project 1 campaign build", "Creative Studio", "high", 120);
-    add("Develop one substantial Next Chapter content piece", "Next Chapter", "medium", 60);
-  }
-  if (weekdayNumber === 3) {
-    add("Publish Brand Identity Project 1 reveal/content (first project ready today)", "Personal Brand", "high", 60);
-    add("Publish the Creative Project 1 campaign output as a second post", "Creative Studio", "high", 45);
-    add("Complete Creative Project 1 campaign deliverables", "Creative Studio", "high", 90);
-    add("Develop one substantial Next Chapter content piece", "Next Chapter", "medium", 60);
-  }
-  if (weekdayNumber === 4) {
-    add("Publish Carousel 2", "Personal Brand", "high", 45);
-    add("Publish the YouTube free tutorial and share it with the community", "Personal Brand", "high", 90);
-    add("Start Creative Project 2: the simpler flyer project", "Creative Studio", "high", 120);
-  }
-  if (weekdayNumber === 5) {
-    add("Publish and promote Friday's Next Chapter content", "Next Chapter", "high", 45);
-    add("Prepare and deliver the weekly Next Chapter live session", "Next Chapter", "high", 90);
-    add("Review next week's guest and session readiness", "Next Chapter", "high", 20);
-    add("Continue and finish Creative Project 2 flyer", "Creative Studio", "high", 90);
-  }
-  if (weekdayNumber === 6) {
-    add("Publish the second installment of Brand Identity Project 2", "Personal Brand", "high", 60);
-    add("Batch creative assets and prepare next week's content drafts", "Personal Brand", "high", 90);
-  }
-  if (weekdayNumber === 0) {
-    add("Publish Creative Project 2 output", "Creative Studio", "high", 45);
-    add("Batch content and prepare the coming week's publishing schedule", "Personal Brand", "high", 90);
-    add("Review both weekly Creative Studio projects and set next milestones", "Creative Studio", "high", 30);
-    add("Create next Friday's Next Chapter session plan and begin guest outreach", "Next Chapter", "high", 30);
-  }
-
-  // Carry-forward is an explicit user action in My Day or cycle rollover.
-  // Automatic planning must not change or duplicate unfinished tasks.
-  const stamp = now();
   await db.exec("BEGIN IMMEDIATE");
   try {
     const result = await db
       .prepare("INSERT OR IGNORE INTO generated_days(user_id,day) VALUES (?,?)")
       .run(userId, day);
-    if (Number(result.changes)) {
-      const insert = db.prepare(
-        `INSERT INTO tasks(id,user_id,cycle_id,title,category,priority,status,due_date,scheduled_time,estimated_minutes,sort_order,created_at,updated_at)
-        VALUES (?,?,?,?,?,?,'todo',?,?,?,?,?,?)`,
-      );
-      for (const [index, template] of planned.slice(0, 30).entries()) {
-        if (typeof template.title !== "string" || !template.title.trim())
-          continue;
-        const priority = ["high", "medium", "low"].includes(
-          template.priority || "",
-        )
-          ? template.priority!
-          : "medium";
-        await insert.run(
-          id(),
-          userId,
-          cycle?.id || null,
-          template.title.trim().slice(0, 200),
-          String(template.category || "Personal").slice(0, 80),
-          priority,
-          day,
-          String(template.scheduled_time || ""),
-          Math.max(0, Math.min(1440, Number(template.estimated_minutes) || 0)),
-          index,
-          stamp,
-          stamp,
-        );
-      }
-    }
+    if (Number(result.changes))
+      await insertDayTasks(userId, day, info, false);
     await db.exec("COMMIT");
   } catch (error) {
     await db.exec("ROLLBACK");
     throw error;
   }
+}
+
+/**
+ * One-time, idempotent owner-only reconciliation for existing workspaces.
+ * Cancels obsolete TODO work (never deletes a row, never touches completed
+ * history) and fills in the correct plan for days already generated.
+ */
+export async function reconcilePersonalWorkspace(
+  userId: string,
+): Promise<{ cancelled: number; added: number; days: string[] }> {
+  await markPersonalOwner(userId);
+  await ensurePersonalPlan(userId);
+  await db
+    .prepare("UPDATE settings SET daily_templates=?,auto_plan=1,updated_at=? WHERE user_id=?")
+    .run(JSON.stringify(PERSONAL_ROUTINE), now(), userId);
+
+  const obsolete = OBSOLETE_TITLES;
+  let cancelled = 0;
+  for (const title of obsolete) {
+    const result = await db
+      .prepare(
+        "UPDATE tasks SET status='cancelled',updated_at=? WHERE user_id=? AND title=? AND status='todo'",
+      )
+      .run(now(), userId, title);
+    cancelled += Number(result.changes);
+  }
+
+  const days = (await db
+    .prepare("SELECT day FROM generated_days WHERE user_id=? ORDER BY day")
+    .all(userId)) as Array<{ day: string }>;
+  let added = 0;
+  for (const { day } of days) {
+    const info = await personalDayPlan(userId, day);
+    added += await insertDayTasks(userId, day, info, true);
+  }
+  return { cancelled, added, days: days.map((row) => row.day) };
 }
 
 /** Existing private workspaces get a shared team space without changing their data. */

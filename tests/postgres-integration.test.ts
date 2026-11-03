@@ -137,7 +137,7 @@ describe("async Express API on PostgreSQL", () => {
     expect(await count("select count(*)::int as count from momentum_os.users")).toBe(1);
     expect(await count("select count(*)::int as count from momentum_os.settings")).toBe(1);
     expect(await count("select count(*)::int as count from momentum_os.cycles")).toBe(1);
-    expect(await count("select count(*)::int as count from momentum_os.products")).toBe(1);
+    expect(await count("select count(*)::int as count from momentum_os.products")).toBe(0);
     const sessions = await state.engine.query(
       "select token_hash, csrf_token, expires_at from momentum_os.auth_sessions",
     );
@@ -149,30 +149,30 @@ describe("async Express API on PostgreSQL", () => {
     expect(result.status).toBe(403);
   });
 
-  it("generates an idempotent daily plan on bootstrap", async () => {
+  it("keeps a clean workspace idempotently with no inherited personal plan", async () => {
     const first = await request("GET", "/bootstrap");
     expect(first.status).toBe(200);
     cycleId = first.body.cycles[0].id;
     expect(first.body.cycles[0]).toMatchObject({
       month: "2026-11",
-      sales_target: 68,
-      revenue_target: 1013200,
-      outreach_target: 20,
+      sales_target: 0,
+      revenue_target: 0,
+      outreach_target: 0,
     });
     const afterFirst = await count(
       "select count(*)::int as count from momentum_os.tasks",
     );
-    const generated = await count(
-      "select count(*)::int as count from momentum_os.generated_days",
-    );
-    expect(generated).toBe(1);
+    expect(afterFirst).toBe(0);
+    expect(
+      await count("select count(*)::int as count from momentum_os.generated_days"),
+    ).toBe(0);
     await request("GET", "/bootstrap");
     expect(
       await count("select count(*)::int as count from momentum_os.tasks"),
     ).toBe(afterFirst);
     expect(
       await count("select count(*)::int as count from momentum_os.generated_days"),
-    ).toBe(1);
+    ).toBe(0);
   });
 
   it("persists a write and reads it back on a separate request", async () => {

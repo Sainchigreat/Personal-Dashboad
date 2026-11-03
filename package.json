@@ -16,7 +16,8 @@
     "verify:db": "tsx scripts/verify-db.ts",
     "import:sqlite": "tsx scripts/import-sqlite.ts",
     "verify:netlify": "node scripts/verify-netlify.mjs",
-    "backfill:goals": "tsx scripts/backfill-goals.ts"
+    "backfill:goals": "tsx scripts/backfill-goals.ts",
+    "reconcile:personal": "tsx scripts/reconcile-personal-plan.ts"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.2.5",

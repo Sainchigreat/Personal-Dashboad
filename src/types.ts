@@ -290,7 +290,9 @@ export interface Speaker extends Base {
   agreed_date: string | null;
   alternative_dates: string;
   reminder_dates: string;
+  reminder_status: "not_sent" | "scheduled" | "sent" | "acknowledged";
   asset_requirements: string;
+  asset_approval_status: "pending" | "in_review" | "approved" | "changes_requested";
   bio_photo_received: number;
   flyer_approved: number;
   owner_id: string | null;

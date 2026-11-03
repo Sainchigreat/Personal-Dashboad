@@ -246,60 +246,39 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
       })
       .strict()
       .parse(req.body);
-    const count = await db.prepare("SELECT COUNT(*) AS count FROM users").get() as {
-      count: number;
-    };
     const email = input.email.toLowerCase();
-    if (count.count === 0) {
-      if (input.inviteToken)
-        return res.status(400).json({
-          error: "Set up the owner workspace before using team invitations.",
-        });
-      const passwordHash = await bcrypt.hash(input.password, 12);
-      // Recheck after the asynchronous hash; only one initial owner is allowed.
-      const afterHash = await db
-        .prepare("SELECT COUNT(*) AS count FROM users")
-        .get() as { count: number };
-      if (afterHash.count > 0)
-        return res
-          .status(403)
-          .json({ error: "This private workspace has already been set up." });
-      const userId = id();
-      await createWorkspace(userId, email, passwordHash, input.name, true);
-      return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
-    }
+
+    // Multi-user platform: any new email may create its OWN independent
+    // workspace. The first account is no longer a special private-owner setup,
+    // and no other account inherits the personal plan (see server/personalPlan.ts).
     if (!input.inviteToken) {
-      // Public self-service signup creates a completely separate personal
-      // workspace. It never joins the first user's workspace or copies their
-      // goals, cycles, products, tasks, clients, or team data.
-      const existing = await db
-        .prepare("SELECT id FROM users WHERE lower(email)=?")
-        .get(email);
-      if (existing)
-        return res.status(409).json({
-          error: "An account with this email already exists. Please sign in.",
-        });
+      if (
+        await db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email)
+      )
+        return res
+          .status(409)
+          .json({ error: "This email already has an account. Please sign in." });
       const passwordHash = await bcrypt.hash(input.password, 12);
+      // Recheck after the asynchronous hash: registration must stay idempotent.
+      if (
+        await db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email)
+      )
+        return res
+          .status(409)
+          .json({ error: "This email already has an account. Please sign in." });
       const userId = id();
-      try {
-        await createWorkspace(userId, email, passwordHash, input.name, false);
-      } catch (error) {
-        // A concurrent signup may win the unique-email race after the lookup.
-        const message = error instanceof Error ? error.message : "";
-        if (/unique|duplicate/i.test(message))
-          return res.status(409).json({
-            error: "An account with this email already exists. Please sign in.",
-          });
-        throw error;
-      }
+      await createWorkspace(userId, email, passwordHash, input.name);
       return res.json({ csrfToken: (await setSession(res, userId)).csrfToken });
     }
+
+    // Invitation flow is preserved exactly: team accounts get a profile and
+    // team access only, never an owner's personal workspace.
     const lookup = async () =>
-      await db
+      (await db
         .prepare(
           "SELECT id,workspace_id,role,email FROM team_invites WHERE token_hash=? AND expires_at>? AND accepted_at IS NULL",
         )
-        .get(hashInvite(input.inviteToken!), Date.now()) as
+        .get(hashInvite(input.inviteToken!), Date.now())) as
         | {
             id: string;
             workspace_id: string;
@@ -318,8 +297,6 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
       stamp = now();
     await db.exec("BEGIN IMMEDIATE");
     try {
-      // Invitation consumption and account creation are atomic and rechecked
-      // after the asynchronous password hash.
       const invite = await lookup();
       if (!invite || invite.email.toLowerCase() !== email) {
         await db.exec("ROLLBACK");
@@ -333,30 +310,38 @@ app.post("/api/auth/register", authThrottle, async (req, res, next) => {
           error: "This email already has an account. Please sign in.",
         });
       }
-      await db.prepare(
-        "INSERT INTO users(id,email,password_hash,account_type,created_at) VALUES (?,?,?,'team',?)",
-      ).run(userId, email, passwordHash, stamp);
-      // Team accounts have only a profile and team access; do not seed the
-      // owner's private cycles, plans, revenue or clients into their portal.
-      await db.prepare(
-        "INSERT INTO settings(id,user_id,name,theme,auto_plan,daily_templates,created_at,updated_at) VALUES (?,?,?,'light',0,'[]',?,?)",
-      ).run(id(), userId, input.name, stamp, stamp);
-      await db.prepare(
-        "INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,?,'active',?)",
-      ).run(id(), invite.workspace_id, userId, invite.role, stamp);
-      await db.prepare(
-        "UPDATE team_invites SET accepted_at=? WHERE id=? AND accepted_at IS NULL",
-      ).run(stamp, invite.id);
-      await db.prepare(
-        "INSERT INTO team_activity(id,workspace_id,actor_user_id,action,entity_type,entity_id,summary,created_at) VALUES (?,?,?,'joined','member',?,?,?)",
-      ).run(
-        id(),
-        invite.workspace_id,
-        userId,
-        userId,
-        `${input.name} joined the team`,
-        stamp,
-      );
+      await db
+        .prepare(
+          "INSERT INTO users(id,email,password_hash,account_type,created_at) VALUES (?,?,?,'team',?)",
+        )
+        .run(userId, email, passwordHash, stamp);
+      await db
+        .prepare(
+          "INSERT INTO settings(id,user_id,name,theme,auto_plan,daily_templates,created_at,updated_at) VALUES (?,?,?,'light',0,'[]',?,?)",
+        )
+        .run(id(), userId, input.name, stamp, stamp);
+      await db
+        .prepare(
+          "INSERT INTO team_members(id,workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,?,'active',?)",
+        )
+        .run(id(), invite.workspace_id, userId, invite.role, stamp);
+      await db
+        .prepare(
+          "UPDATE team_invites SET accepted_at=? WHERE id=? AND accepted_at IS NULL",
+        )
+        .run(stamp, invite.id);
+      await db
+        .prepare(
+          "INSERT INTO team_activity(id,workspace_id,actor_user_id,action,entity_type,entity_id,summary,created_at) VALUES (?,?,?,'joined','member',?,?,?)",
+        )
+        .run(
+          id(),
+          invite.workspace_id,
+          userId,
+          userId,
+          `${input.name} joined the team`,
+          stamp,
+        );
       await db.exec("COMMIT");
     } catch (error) {
       await db.exec("ROLLBACK");
