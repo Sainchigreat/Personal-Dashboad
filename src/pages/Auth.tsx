@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck, UserRoundPlus } from "lucide-react";
 import { api, setCsrf, setPreviewToken } from "../lib/api";
 import { browserStorage } from "../lib/storage";
 import { invitationToken } from "../lib/invite";
@@ -117,7 +117,7 @@ export default function Auth({
         </div>
         <div className="auth-card">
           <div className="auth-icon">
-            <LockKeyhole size={20} />
+            {signingUp ? <UserRoundPlus size={20} /> : <LockKeyhole size={20} />}
           </div>
           <h2>
             {joining
@@ -137,7 +137,7 @@ export default function Auth({
           </p>
 
           {!joining && (
-            <div className="auth-tabs" role="tablist" aria-label="Account access">
+            <div className="auth-tabs auth-switch" role="tablist" aria-label="Account access">
               <button
                 type="button"
                 role="tab"

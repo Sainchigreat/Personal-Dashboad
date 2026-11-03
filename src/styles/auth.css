@@ -203,3 +203,10 @@
   .auth-card{padding:20px}
   .auth-tabs button{padding:10px 4px;font-size:.8rem}
 }
+
+/* Retained from PR #8 (auth-switch / legal link) for compatibility. */
+.auth-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin:0 0 20px;border:1px solid var(--border-light);border-radius:10px;background:var(--surface-2)}
+.auth-switch button{border:0;border-radius:7px;padding:10px 12px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.auth-switch button.active{background:var(--surface);color:var(--accent-strong);box-shadow:0 1px 4px #17203314}
+.auth-legal{margin:18px 0 0;text-align:center;color:var(--muted);font-size:11px}
+.auth-legal button{border:0;padding:0;background:transparent;color:var(--accent);font:inherit;font-weight:700;cursor:pointer}
