@@ -340,7 +340,7 @@ export async function createWorkspace(
   email: string,
   passwordHash: string,
   name: string,
-  seedInitialOwnerPlan = false,
+  seedInitialOwnerPlan = true,
 ): Promise<void> {
   const stamp = now();
   await db.exec("BEGIN IMMEDIATE");
