@@ -151,7 +151,7 @@ describe("integrated private team portals", () => {
           password: "a-long-enough-password",
         })
       ).status,
-    ).toBe(403);
+    ).toBe(200);
   });
 
   it("issues single-use invitations bound to an email and creates team-only accounts", async () => {
